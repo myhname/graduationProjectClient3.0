@@ -59,8 +59,11 @@ const currView = ref(4)
 watch(currView,()=>{
   changePage(currView.value)
   //这里用同名通信事件会有问题，所以用两个事件分别向两个页面发送信息，从而同步页面地址状态
+  //原因是页面切换时被注销了，所以要组件接收不到信息
   emitter.emit('syncWhichView', currView.value)
   emitter.emit('syncWhichViewLeft', currView.value)
+  //发送给header，来调整头部菜单栏显示
+  emitter.emit('syncWhichViewHeader', currView.value)
 })
 
 onMounted(()=>{

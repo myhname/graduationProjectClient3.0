@@ -1,7 +1,7 @@
 <template>
     <div class="box">
         <!-- 上方功能栏 -->
-        <div class="left-top">
+        <div class="left-top" :class="{showControl:!isShow}">
             <div class="appControl" id="jiacu" v-bind:title="blodMsg">
                 <MyIcons icon="jiacu" Style="font-size:2rem"></MyIcons>
             </div>
@@ -55,7 +55,6 @@ import emitter from '../untils/eventBus'
 
 import MyIcons from '@/components/MyIcons.vue';
 
-
 // 名称
 const blodMsg =  "加粗"
 const inclineMsg = "倾斜"
@@ -71,8 +70,11 @@ const setupMsg = "设置"
 const userMsg = "用户"
 const returnIndexMsg = "返回首页"
 
+//控制编菜单栏的显示
+const isShow = ref(false)
+
 //跳转操作
-const toWhichViewLeft = ref(1)
+const toWhichViewLeft = ref(4)
 const toAccount = ()=>{
     toWhichViewLeft.value = 2
 }
@@ -82,6 +84,11 @@ const toIndex = ()=>{
 watch(toWhichViewLeft, ()=>{
     //避免注册同名事件，所以换一个名字
     emitter.emit('toWhichViewLeft', toWhichViewLeft.value)
+    if(toWhichViewLeft.value === 1){
+        isShow.value = true
+    }else{
+        isShow.value = false
+    }
 })
 
 onMounted(()=>{
@@ -99,13 +106,16 @@ onBeforeUnmount(()=>{
 </script>
 
 <style scoped>
+.showControl{
+    display: none;
+}
 .box {
     position: relative;
     width: 100%;
     height: 100%;
     background-repeat: no-repeat;
     background-size: cover;
-    background-image: url("../images/backgroundImg/1.jpg");
+    background-image: url("../images/backgroundImg/3.jpg");
     opacity: 0.8;
 }
 .left-top{

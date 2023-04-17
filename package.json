@@ -1,15 +1,21 @@
 {
   "name": "myproject",
   "version": "0.1.0",
+  "author": "MYH",
+  "description": "graduation project third",
   "private": true,
+  "main": "main.js",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "test": "nodemon --exec electron . --watch ./ --ext .js,.html,.css,.vue"
   },
   "dependencies": {
     "codemirror": "^5.61.1",
     "core-js": "^3.8.3",
+    "electron": "^24.1.2",
+    "electron-win-state": "^1.1.22",
     "mitt": "^3.0.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3"

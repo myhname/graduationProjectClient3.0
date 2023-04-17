@@ -24,7 +24,7 @@ const toWhichView = ref()
 const toEditor = ()=>{
     toWhichView.value = 1
 }
-//实际上要先跳转到用户登录界面
+//实际上要先跳转到用户登录界面 
 const toOnlineEditor = ()=>{
     toWhichView.value = 2
 }
