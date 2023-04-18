@@ -15,33 +15,56 @@
 
 <script setup>
 
-import {ref,watch,onMounted,onBeforeUnmount} from 'vue'
+import {ref,watch} from 'vue'
 
 import emitter from '../untils/eventBus'
 
-// 传递页面跳转信息
-const toWhichView = ref()
+//引入方法以及路由
+import { useRouter } from 'vue-router'
+
+import {login} from '../request/user'
+
+const router = useRouter()
+
+//提示信息
+const promptingMsg = ref()
+
 const toEditor = ()=>{
-    toWhichView.value = 1
+    // 本地编辑
+    emitter.emit('changeCurrView', 1)
+    emitter.emit('isOnlineReady', false)
+    promptingMsg.value = "进入本地编辑模式"
+    router.push('/editor')
 }
 //实际上要先跳转到用户登录界面 
 const toOnlineEditor = ()=>{
-    toWhichView.value = 2
+    // 如果已经登录则无需再次登录
+    if(localStorage.getItem('userUID')){
+        login({
+            "UUID":null,
+            "name":null,
+            "password":localStorage.getItem('password'),
+            "account":localStorage.getItem('account')
+        }).then((res)=>{
+            let curr = res.object.split("|||")
+            //更新token有效期
+            localStorage.setItem('token', curr[0])
+            // 在线编辑
+            emitter.emit('changeCurrView', 1)
+            emitter.emit('isOnlineReady', true)
+            promptingMsg.value = "进入在线编辑"
+            router.push('/editor')
+            return
+        })
+    }
+    emitter.emit('changeCurrView', 2)
+    promptingMsg.value = "用户登录"
+    router.push('/account')
 }
-watch(toWhichView, ()=>{
-    emitter.emit('toWhichView', toWhichView.value)
-})
 
-onMounted(()=>{
-    //同步当前页面地址信息
-    emitter.on('syncWhichView',(value)=>{
-        toWhichView.value = value
-    })
-})
-
-onBeforeUnmount(()=>{
-  //注销监听事件
-  emitter.off('syncWhichView')
+//发送提示信息
+watch(promptingMsg,()=>{
+    emitter.emit('IndexSendMsgToBottom', promptingMsg.value)
 })
 
 </script>

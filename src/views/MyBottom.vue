@@ -1,14 +1,31 @@
 <template>
     <div class="box">
-        <div class="time"> {{ nowTime }} 星期{{ NowDay }}</div>
-        <div class="editor" :class="{showControl:!isShow}"></div>
+        <!-- 左下角时间日期显示 -->
+        <div class="time">
+            {{ nowTime }} 星期{{ NowDay }}
+        </div>
+        <!-- 当前编辑的文章信息 -->
+        <div class="wordCount" :class="{ showControl: false }">行数：{{ lineNumbers }}</div>
+        <div class="language" :class="{ showControl: false }">语言模式：{{ mode }}</div>
+        <!-- 操作提示信息 -->
+        <div class="msgBox">
+            {{ promptingMsg }}
+        </div>
+            <!-- 网络状态 -->
+        <div class="imgInternet" v-bind:title="isOnlineMsg">
+            <MyIcons v-if="!isOnline" icon="wangluo" style="font-size: 1rem;"></MyIcons>
+            <MyIcons v-else icon="wuxianwangluo" style="font-size: 1rem;"></MyIcons>
+        </div>
+        
     </div>
 </template>
 
 <script setup>
 
 import { ref, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
+
 import MyIcons from '../components/MyIcons.vue';
+
 import emitter from '../untils/eventBus'
 
 //日期显示
@@ -19,7 +36,17 @@ const NowDay = ref()
 const nowTimer = ref()
 
 //控制显示
-const isShow = ref(true)
+const isShow = ref(false)
+//接收行数
+const lineNumbers = ref("")
+//接收语言类型
+const mode = ref("")
+//接收提示信息
+const promptingMsg = ref("欢迎使用毕业设计编辑器")
+//在线or本地状态
+const isOnline = ref(false)
+//标签信息
+const isOnlineMsg = ref("本地编辑")
 
 //获取日期
 const getNowTime = () => {
@@ -29,21 +56,47 @@ const getNowTime = () => {
 }
 
 onMounted(() => {
+    //获取日期
     nowTimer.value = setInterval(() => {
         getNowTime()
     }, 1000)
+
+    //同步页面地址, 控制显示
+    emitter.on('syncWhichViewBottom', (value) => {
+        if (value === 1) {
+            isShow.value = true
+        } else {
+            isShow.value = false
+        }
+    })
     // emitter.on('lineNumberChange', (value) => {
     //     lineNumbers.value = value
     // })
     // emitter.on('modeChange', (value) => {
     //     mode.value = value
     // })
+    
+    //接收提示信息
+    emitter.on('leftSendMsgToBottom', (value)=>{
+        promptingMsg.value = value
+    })
+    emitter.on('IndexSendMsgToBottom', (value)=>{
+        promptingMsg.value = value
+    })
+    emitter.on('headerSendMsgToBottom', (value)=>{
+        promptingMsg.value = value
+    })
 })
 
-// onBeforeUnmount(() => {
-//     emitter.off('lineNumberChange')
-//     emitter.off('modeChange')
-// })
+onBeforeUnmount(() => {
+    emitter.off('syncWhichViewBottom')
+    
+    // emitter.off('lineNumberChange')
+    // emitter.off('modeChange')
+    emitter.off('leftSendMsgToBottom')
+    emitter.off('IndexSendMsgToBottom')
+    emitter.off('headerSendMsgToBottom')
+})
 
 onUnmounted(() => {
     clearTimeout(nowTimer.value)
@@ -52,9 +105,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.showControl{
+.showControl {
     display: none;
 }
+
 .box {
     position: relative;
     left: 0;
@@ -74,5 +128,25 @@ onUnmounted(() => {
 .time {
     position: absolute;
     left: 1.5rem;
+}
+
+.wordCount {
+    margin: 0 1rem;
+}
+
+.language {
+    margin: 0 1rem;
+}
+
+.msgBox{
+    position: absolute;
+    top: 0;
+    right: 2.5rem;
+}
+
+.imgInternet{
+    position: absolute;
+    right: 0.5rem;
+    top: 0;
 }
 </style>

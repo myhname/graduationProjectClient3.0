@@ -43,14 +43,14 @@
                 <MyIcons v-if="!ISPRESENT" icon="browse" style="font-size: 2rem;"> </MyIcons>
                 <MyIcons v-else icon="browse-off" style="font-size: 2rem;"></MyIcons>
             </div>
-            <div class="appControl screenControl" id="min" v-bind:title="minsMsg">
+            <div class="appControl screenControl" id="min" v-bind:title="minsMsg" @click="minWindow">
                 <MyIcons icon="zuixiaohua" style="font-size: 1.5rem;"> </MyIcons>
             </div>
-            <div class="appControl screenControl" id="max" v-bind:title="maxMsg">
+            <div class="appControl screenControl" id="max" v-bind:title="maxMsg" @click="maxWindow">
                 <MyIcons v-if="!ISMAX" icon="3zuidahua-1" style="font-size: 1.5rem;"> </MyIcons>
                 <MyIcons v-else icon="zuidahua" style="font-size: 1.5rem;"></MyIcons>
             </div>
-            <div class="appControl screenControl" id="close" v-bind:title="closeMsg">
+            <div class="appControl screenControl" id="close" v-bind:title="closeMsg" @click="closeWindow">
                 <MyIcons icon="close" style="font-size: 1.5rem;"> </MyIcons>
             </div>
         </div>
@@ -73,6 +73,9 @@ const minsMsg = "最小化"
 const maxMsg = "最大化"
 const closeMsg = "最小化"
 
+//提示信息
+const promptingMsg = ref()
+
 //绑定DOM元素
 const menuControl = ref()
 
@@ -94,22 +97,22 @@ const isOnline = ref(false)
 const isFileMenu = ref(false)
 const isCooperationMenu = ref(false)
 
+//判别当前页面状态，改变控制
 watch(currView, () => {
     switch (currView.value) {
         case 0:
             isAccountView.value = false
             isEditorView.value = false
-            titleName.value = false
+            titleName.value = ""
             break;
         case 1:
             isAccountView.value = false
             isEditorView.value = true
-            titleName.value = false
             break;
         case 2:
             isAccountView.value = true
             isEditorView.value = false
-            titleName.value = false
+            titleName.value = ""
             break;
         default:
     }
@@ -134,16 +137,50 @@ const openCooperationMenu = ()=>{
     isCooperationMenu.value = true
 }
 
+//窗口控制
+const minWindow = () => {
+    $app.min()
+}
+const maxWindow = () => {
+    $app.max()
+}
+const closeWindow = () => {
+    $app.close()
+}
+
+// 监听页面大小改变，改变最大化图标
+window.onresize = () => {
+    return (() => {
+        //判断页面是否最大化
+        if (window.outerHeight === screen.availHeight && window.outerWidth === screen.availWidth) {
+            ISMAX.value = true
+            promptingMsg.value = "屏幕最大化"
+        } else {
+            ISMAX.value = false
+            promptingMsg.value = ""
+        }
+    })()
+}
+
+//发送提示信息
+watch(promptingMsg,()=>{
+    emitter.emit('headerSendMsgToBottom', promptingMsg.value)
+})
+
 onMounted(() => {
     //接收页面改变信息
-    emitter.on('syncWhichViewHeader', (value) => {
+    emitter.on('changeCurrView', (value) => {
         currView.value = value
+    })
+    emitter.on('isOnlineReady', (value)=>{
+        isOnline.value = value
     })
 })
 
 onBeforeUnmount(() => {
     //注销监听事件
-    emitter.off('syncWhichViewHeader')
+    emitter.off('changeCurrView')
+    emitter.off('isOnlineReady')
 })
 
 </script>
@@ -296,7 +333,7 @@ li:hover {
 
 #splitScreen {
     position: absolute;
-    right: 8.5rem;
+    right: 9rem;
 }
 
 #present {

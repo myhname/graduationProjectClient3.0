@@ -14,4 +14,20 @@ contextBridge.exposeInMainWorld('$app', {
     }
 })
 
+//文件数据操作
+contextBridge.exposeInMainWorld('$data', {
+    getStartMD: ()=> ipcRenderer.invoke('get-start-md'),
+    getTempPath: ()=> ipcRenderer.invoke('get-temp-path'),
+    getOpenFile: ()=> ipcRenderer.invoke('get-open-file'),
+    backFilePath(filePath){
+        ipcRenderer.send('get-file-path',filePath)
+    },
+    getFileContext: ()=> ipcRenderer.invoke('open-file'),
+    backSaveFile(filePath,context){
+        ipcRenderer.send('save-old-file',filePath,context)
+    },
+    getSavePath: ()=> ipcRenderer.invoke('save-new-file'),
+    backFileName: (fileName)=> ipcRenderer.send('get-default-name',fileName)
+})
+
 console.log(0)

@@ -5,7 +5,7 @@
             <div class="appControl" id="jiacu" v-bind:title="blodMsg">
                 <MyIcons icon="jiacu" Style="font-size:2rem"></MyIcons>
             </div>
-            <div class="appControl" id="qingxie" v-bind:title="blodMsg">
+            <div class="appControl" id="qingxie" v-bind:title="inclineMsg">
                 <MyIcons icon="qingxie" Style="font-size:2rem"></MyIcons>
             </div>
             <div class="appControl" id="chehui" v-bind:title="undoMsg">
@@ -49,11 +49,16 @@
 
 <script setup>
 
-import { ref,watch,onMounted,onBeforeUnmount } from 'vue';
+import { ref,watch,onMounted,onBeforeUnmount} from 'vue';
 
 import emitter from '../untils/eventBus'
 
 import MyIcons from '@/components/MyIcons.vue';
+
+//路由
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 名称
 const blodMsg =  "加粗"
@@ -70,37 +75,43 @@ const setupMsg = "设置"
 const userMsg = "用户"
 const returnIndexMsg = "返回首页"
 
+//提示信息
+const promptingMsg = ref()
 //控制编菜单栏的显示
 const isShow = ref(false)
 
 //跳转操作
-const toWhichViewLeft = ref(4)
 const toAccount = ()=>{
-    toWhichViewLeft.value = 2
+    //进入用户界面
+    emitter.emit('changeCurrView', 2)
+    emitter.emit('isOnlineReady', false)
+    isShow.value = false
+    promptingMsg.value = "进入用户界面"
+    router.push('/account')
 }
 const toIndex = ()=>{
-    toWhichViewLeft.value = 0
+    //返回首页
+    emitter.emit('changeCurrView', 0)
+    emitter.emit('isOnlineReady', false)
+    isShow.value = false
+    promptingMsg.value = "返回首页"
+    router.push('/')
 }
-watch(toWhichViewLeft, ()=>{
-    //避免注册同名事件，所以换一个名字
-    emitter.emit('toWhichViewLeft', toWhichViewLeft.value)
-    if(toWhichViewLeft.value === 1){
-        isShow.value = true
-    }else{
-        isShow.value = false
-    }
+
+//发送提示信息
+watch(promptingMsg,()=>{
+    emitter.emit('leftSendMsgToBottom', promptingMsg.value)
 })
 
 onMounted(()=>{
-    //同步当前页面地址信息
-    emitter.on('syncWhichViewLeft',(value)=>{
-        toWhichViewLeft.value = value
+    //监听工具栏显示控制信息
+    emitter.on('leftToolsShow', (value)=>{
+        isShow.value = value
     })
 })
 
 onBeforeUnmount(()=>{
-  //注销监听事件
-  emitter.off('syncWhichViewLeft')
+    emitter.off('leftToolsShow')
 })
 
 </script>
