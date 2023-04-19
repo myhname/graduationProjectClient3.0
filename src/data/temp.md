@@ -6,6 +6,11 @@
 - [Documentation](https://code-farmer-i.github.io/vue-markdown-editor/)
 - [Changelog](https://code-farmer-i.github.io/vue-markdown-editor/changelog.html)
 
+
+
+1. 单独
+
+
 ## Install
 
 ```bash

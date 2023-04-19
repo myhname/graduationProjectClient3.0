@@ -12,7 +12,8 @@
                     <ul>
                         <li>新建</li>
                         <li>打开</li>
-                        <li>保存</li>
+                        <li v-if="!isOnline">保存</li>
+                        <li v-else>保存到数据库</li>
                         <li>另存为</li>
                     </ul>
                 </div>
@@ -25,6 +26,7 @@
                         <li>打开...</li>
                         <li>评论</li>
                         <li>修改权限</li>
+                        <li>恢复历史版本</li>
                         <li>服务器配置</li>
                     </ul>
                 </div>
@@ -175,12 +177,17 @@ onMounted(() => {
     emitter.on('isOnlineReady', (value)=>{
         isOnline.value = value
     })
+    //接收文件信息
+    emitter.on('titleNameChangeToHeader',(value)=>{
+        titleName.value = value
+    })
 })
 
 onBeforeUnmount(() => {
     //注销监听事件
     emitter.off('changeCurrView')
     emitter.off('isOnlineReady')
+    emitter.off('titleNameChangeToHeader')
 })
 
 </script>

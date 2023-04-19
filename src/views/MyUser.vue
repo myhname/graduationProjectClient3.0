@@ -1,24 +1,28 @@
 <template>
+    <!-- 背景改成毛玻璃会好一点，虚化看的有点费劲 -->
     <div class="box">
+        <!-- 如果想效果更加完善的话，登录注册分成两个单独的组件，使用v-if来操作显示 -->
         <div class="content">
             <div class="login" :class="{ isShow: isShow }">
                 <form>
-                    账 号 <input ref="account" type="text">
-                    <br />
-                    密 码 <input ref="password" type="password">
+                    <div>
+                        <label for="accountValue">账 户：</label>
+                        <input ref="account" type="text">
+                    </div>
+                    <div>
+                        <label for="passwordValue">密 码：</label>
+                        <!-- 单纯获取内容用v-model="password"更好 -->
+                        <input ref="password" type="password">
+                    </div>
                 </form>
             </div>
             <div class="register" :class="{ isShow: !isShow }">
                 <form>
-                    用 户 名 <input ref="regUserName" type="text">
-                    <br>
-                    账 号 <input ref="regAccount" type="text">
-                    <br>
-                    密 码 <input ref="regPassword" type="password" @change="onChange">
-                    <br>
-                    确认密码 <input ref="confirmPassword" type="password" @change="onChange">
-                    <br>
-                    <h6> {{ information }} </h6>
+                    <div><label>用 户 名：</label><input ref="regUserName" type="text"></div>
+                    <div><label>账    号： </label><input ref="regAccount" type="text"></div>
+                    <div><label>密    码： </label><input ref="regPassword" type="password" @change="onChange"></div>
+                    <div><label>确认密码：</label><input ref="confirmPassword" type="password" @change="onChange"></div>
+                    <h5> {{ information }} </h5>
                 </form>
             </div>
             <div class="btn">
@@ -96,6 +100,7 @@ const getLogin = () => {
         })
     } else {
         isShow.value = false
+        promptingMsg.value = "请输入登录信息"
     }
 }
 
@@ -123,6 +128,7 @@ const getRegister = () => {
         }
     } else {
         isShow.value = true
+        promptingMsg.value = "请输入注册信息"
     }
 }
 
@@ -173,7 +179,8 @@ watch(promptingMsg, () => {
     top: 20%;
     width: 50%;
     height: 60%;
-    background-color: #ebe5e5;
+    background-color: antiquewhite;
+    background-color: rgba(250, 235, 215, 0.3);
     color: black;
     font-size: medium;
     font-weight: bolder;
@@ -201,6 +208,33 @@ watch(promptingMsg, () => {
     align-items: center;
     justify-content: center;
     text-align: center;
+}
+
+form {
+    border-radius: 10px;
+    box-shadow: 0px 0px 0.6rem rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+label{
+    font-size: 1rem;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 70%;
+    border: 1px solid #ddd;
+    border-radius: 0.3rem;
+    font-size: 1rem;
+    margin-bottom: 1.3rem;
+    padding: 0.6rem;
+}
+
+h5 {
+    text-align: left;
+    color: crimson;
 }
 
 .isShow {

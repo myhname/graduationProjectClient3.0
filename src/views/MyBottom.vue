@@ -5,8 +5,8 @@
             {{ nowTime }} 星期{{ NowDay }}
         </div>
         <!-- 当前编辑的文章信息 -->
-        <div class="wordCount" :class="{ showControl: false }">行数：{{ lineNumbers }}</div>
-        <div class="language" :class="{ showControl: false }">语言模式：{{ mode }}</div>
+        <div class="wordCount" :class="{ showControl: !isShow }">行数：{{ lineNumbers }}</div>
+        <div class="language" :class="{ showControl: !isShow }">语言模式：{{ mode }}</div>
         <!-- 操作提示信息 -->
         <div class="msgBox">
             {{ promptingMsg }}
@@ -43,6 +43,8 @@ const lineNumbers = ref("")
 const mode = ref("")
 //接收提示信息
 const promptingMsg = ref("欢迎使用毕业设计编辑器")
+//定时清除提示信息
+const timerClearMsg = ref()
 //在线or本地状态
 const isOnline = ref(false)
 //标签信息
@@ -61,6 +63,11 @@ onMounted(() => {
         getNowTime()
     }, 1000)
 
+    //定时清除提示信息，1分40秒
+    timerClearMsg.value = setInterval(() => {
+        promptingMsg.value = ""
+    }, 100000)
+
     //同步页面地址, 控制显示
     emitter.on('syncWhichViewBottom', (value) => {
         if (value === 1) {
@@ -69,12 +76,15 @@ onMounted(() => {
             isShow.value = false
         }
     })
-    // emitter.on('lineNumberChange', (value) => {
-    //     lineNumbers.value = value
-    // })
-    // emitter.on('modeChange', (value) => {
-    //     mode.value = value
-    // })
+    emitter.on('editorSendMsgToBottom',(value)=>{
+        isShow.value = value
+    })
+    emitter.on('lineNumberChangeToBottom', (value) => {
+        lineNumbers.value = value
+    })
+    emitter.on('modeChangeToBottom', (value) => {
+        mode.value = value
+    })
     
     //接收提示信息
     emitter.on('leftSendMsgToBottom', (value)=>{
@@ -86,16 +96,20 @@ onMounted(() => {
     emitter.on('headerSendMsgToBottom', (value)=>{
         promptingMsg.value = value
     })
+    emitter.on('contentSendMsgToBottom', (value)=>{
+        promptingMsg.value = value
+    })
 })
 
 onBeforeUnmount(() => {
     emitter.off('syncWhichViewBottom')
-    
-    // emitter.off('lineNumberChange')
-    // emitter.off('modeChange')
+    emitter.off('editorSendMsgToBottom')
+    emitter.off('lineNumberChangeToBottom')
+    emitter.off('modeChangeToBottom')
     emitter.off('leftSendMsgToBottom')
     emitter.off('IndexSendMsgToBottom')
     emitter.off('headerSendMsgToBottom')
+    emitter.off('contentSendMsgToBottom')
 })
 
 onUnmounted(() => {
