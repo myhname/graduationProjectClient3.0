@@ -71,10 +71,10 @@ const tempFile = reactive({
 const autoSaveTimer = ref()
 
 //弹窗控制
-const isDialog = ref(true)
+const isDialog = ref(false)
 // 之后多了改用v-if或者其它方式进行选择
 const show = ref()
-const dialogTitle = ref("新建文件")
+const dialogTitle = ref()
 
 //编辑器初始化
 //文件格式和语言类型同步
@@ -117,6 +117,7 @@ const autoSave = () => {
 const getNewFile = () => {
     //实际上应该是打开到新的标签页不需要考虑上一份文件是否已经保存
     isDialog.value = true
+    dialogTitle.value = "新建文件"
     show.value = false
 }
 const getShowChange = (value) => {
