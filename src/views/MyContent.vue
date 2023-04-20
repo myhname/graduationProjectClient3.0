@@ -9,6 +9,17 @@
         <div class="right-preview" :class="{ present: isPresent }">
             <MyPreview :md="markdown" />
         </div>
+
+        <!-- 弹窗显示 -->
+        <div class="dialog-editor" :class="{ disNone: !isDialog }">
+            <div class="dialog-title"> {{dialogTitle}}</div>
+            <div class="dailog-close" @click="closeDialog">
+                <MyIcons icon="close" Style="font-size:1.5rem"> </MyIcons>
+            </div>
+            <div class="dialog">
+                <NewFileDialog :show="show" @showChange="getShowChange" @newFileName="getNewFileName" />
+            </div>
+        </div>
     </div>
 </template>
 
@@ -21,11 +32,13 @@ import emitter from '../untils/eventBus';
 //编辑渲染组件
 import MyEditor from '@/components/MyEditor.vue';
 import MyPreview from '../components/MyPreview.vue'
+import MyIcons from '@/components/MyIcons.vue';
+
+//弹窗
+import NewFileDialog from '../components/NewFileDialog.vue'
 
 //显示控制（预览功能）
 const isPresent = ref(false)
-//弹窗显示
-const showDialog = ref(false)
 
 //获取组件
 const editor = ref()
@@ -48,8 +61,6 @@ const lineNumbers = ref()
 //提示信息
 const promptingMsg = ref()
 
-//按钮触发值
-const whichBtnClicked = ref()
 //新建文件 需要命名和提交结果
 const newFile = ref()
 //自动保存，这里所有新建的文件只有一份暂存副本，多个的话涉及到了删除缓存，之后再改进，未保存的提示应该在页面关闭时触发提示
@@ -58,6 +69,12 @@ const tempFile = reactive({
     result: ""
 })
 const autoSaveTimer = ref()
+
+//弹窗控制
+const isDialog = ref(true)
+// 之后多了改用v-if或者其它方式进行选择
+const show = ref()
+const dialogTitle = ref("新建文件")
 
 //编辑器初始化
 //文件格式和语言类型同步
@@ -96,6 +113,80 @@ const autoSave = () => {
         $data.backSaveFile(filePath.value, markdown.value)
     }
 }
+//新建文件
+const getNewFile = () => {
+    //实际上应该是打开到新的标签页不需要考虑上一份文件是否已经保存
+    isDialog.value = true
+    show.value = false
+}
+const getShowChange = (value) => {
+    show.value = value
+    closeDialog()
+}
+const getNewFileName = (value) => {
+    newFile.value = value
+}
+watch(newFile, () => {
+    titleName.value = newFile.value
+    fileFormat.value = titleName.value.split('.').pop()
+    startText.value = ""
+})
+
+//打开本地文件
+const openFile = async () => {
+    //获得文件路径，解析获得文件名和后缀
+    let tempFilePath = (await $data.getOpenFile()).filePaths[0]
+    if (tempFilePath) {
+        filePath.value = tempFilePath
+        let fileName = filePath.value.split('\\').pop()
+        titleName.value = fileName
+        //获得文件后缀，未后续扩充更多解析渲染格式做准备
+        fileFormat.value = fileName.split('.').pop()
+        $data.backFilePath(filePath.value)
+        startText.value = (await $data.getFileContext())
+    } else {
+        console.log("打开操作已取消")
+    }
+}
+//保存文件
+const saveFile = () => {
+    // 如果是新建或者初始文件
+    if (!filePath.value) {
+        saveNewFile()
+    } else {
+        $data.backSaveFile(filePath.value, markdown.value)
+    }
+}
+//另存为
+const saveNewFile = async () => {
+    //还有一个问题，文件应该有一个默认的名字
+    //取消之后返回的是空值，得先判断操作是否执行下去了
+    $data.backFileName(titleName.value)
+    let tempFilePath = (await $data.getSavePath()).filePath
+    if (tempFilePath) {
+        filePath.value = tempFilePath
+        let fileName = filePath.value.split('\\').pop()
+        titleName.value = fileName
+        fileFormat.value = fileName.split('.').pop()
+        switch (fileFormat.value) {
+            case 'md': mode.value = "markdwon"; break;
+            default: mode.value = "txt"
+        }
+        $data.backSaveFile(filePath.value, markdown.value)
+    } else {
+        console.log("保存操作已取消")
+    }
+}
+
+//预览
+const preview = () => {
+    isPresent.value = !isPresent.value
+}
+
+//弹窗控制
+const closeDialog = ()=>{
+    isDialog.value = false
+}
 
 //协同编辑部分，这个哪怕本地编辑也会触发，有点问题
 const receiveUpdateData = (value) => {
@@ -114,6 +205,51 @@ onMounted(async () => {
     autoSaveTimer.value = setInterval(() => {
         autoSave()
     }, 30000)
+
+    //接收文件操作信息
+    emitter.on('fileControlMsgToEditor', (value) => {
+        switch (value) {
+            case "newFile":
+                getNewFile()
+                break
+            case "openFile":
+                openFile()
+                break
+            case "saveFile":
+                saveFile()
+                break
+            case "saveNewFile":
+                saveNewFile()
+                break
+            case "output":
+                console.log("待后续完善")
+                break
+            case "saveToSQL":
+                console.log("待后续完善")
+                break
+            case "upload":
+                console.log("待后续完善")
+                break
+            case "getFlieList":
+                console.log("待后续完善")
+                break
+            case "newComment":
+                console.log("待后续完善")
+                break
+            case "newPermission":
+                console.log("待后续完善")
+                break
+            case "historyBack":
+                console.log("待后续完善")
+                break
+            case "preview":
+                preview()
+                break
+            default:
+                promptingMsg.value = "未定义操作"
+                break
+        }
+    })
 
     //接收左侧快捷编辑工具信息
     emitter.on('editorUtilsMsgToContent', (value) => {
@@ -151,6 +287,7 @@ onMounted(async () => {
                     break
                 default:
                     promptingMsg.value = "未定义操作"
+                    break
             }
         } else {
             promptingMsg.value = "当前语言格式暂不支持快捷操作"
@@ -225,4 +362,49 @@ onUnmounted(() => {
 .present {
     width: 98%;
 }
+
+.dialog-editor {
+    position: absolute;
+    left: 25%;
+    top: 25%;
+    width: 50%;
+    height: 40%;
+    z-index: 999;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-image: url('../images/backgroundImg/3.jpg');
+    filter: opacity(0.9);
+}
+
+.dialog-title {
+    position: absolute;
+    left: 0.3rem;
+    top: 0.2rem;
+    font-size: larger;
+    font-weight: bolder;
+    color: black;
+}
+
+.dailog-close{
+    position: absolute;
+    top: 0.2rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.dailog-close:hover{
+    cursor: pointer;
+    background-color: red;
+}
+
+.dialog {
+    position: absolute;
+    left: 0;
+    top: 10%;
+    width: 100%;
+    height: 90%;
+}
+
 </style>

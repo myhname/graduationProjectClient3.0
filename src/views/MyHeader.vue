@@ -10,11 +10,12 @@
                 <button type="button" @click="openFileMenu">文件</button>
                 <div class="menu" :class="{showMenu:!isFileMenu}">
                     <ul>
-                        <li>新建</li>
-                        <li>打开</li>
-                        <li v-if="!isOnline">保存</li>
-                        <li v-else>保存到数据库</li>
-                        <li>另存为</li>
+                        <li @click="getNewFile">新建</li>
+                        <li @click="getOpenFile">打开</li>
+                        <li v-if="!isOnline" @click="getSaveFile">保存</li>
+                        <li v-else @click="getSaveToSQL">保存到数据库</li>
+                        <li @click="getSaveNewFile">另存为</li>
+                        <li @click="getOutput">导出为...</li>
                     </ul>
                 </div>
             </div>
@@ -22,12 +23,12 @@
                 <button type="button" @click="openCooperationMenu">协作</button>
                 <div class="menu" :class="{showMenu:!isCooperationMenu}">
                     <ul>
-                        <li>上传</li>
-                        <li>打开...</li>
-                        <li>评论</li>
-                        <li>修改权限</li>
-                        <li>恢复历史版本</li>
-                        <li>服务器配置</li>
+                        <li @click="getUpload">上传</li>
+                        <li @click="getFileList">打开...</li>
+                        <li @click="getComment">评论</li>
+                        <li @click="getPermission">修改权限</li>
+                        <li @click="getHistory">恢复历史版本</li>
+                        <li @click="getClientServer">服务器配置</li>
                     </ul>
                 </div>
             </div>
@@ -38,10 +39,10 @@
         </div>
         <!-- 右侧控制组件 -->
         <div class="header-right">
-            <div class="appControl" id="splitScreen" v-bind:title="splitscreenMsg">
+            <div class="appControl" id="splitScreen" v-bind:title="splitscreenMsg" :class="{showMenu:!isEditorView}">
                 <MyIcons icon="w_pingmu" style="font-size: 2rem;"> </MyIcons>
             </div>
-            <div class="appControl" id="present" v-bind:title="presentMsg">
+            <div class="appControl" id="present" v-bind:title="presentMsg" @click="getPreview" :class="{showMenu:!isEditorView}">
                 <MyIcons v-if="!ISPRESENT" icon="browse" style="font-size: 2rem;"> </MyIcons>
                 <MyIcons v-else icon="browse-off" style="font-size: 2rem;"></MyIcons>
             </div>
@@ -137,6 +138,73 @@ const openFileMenu = ()=>{
 const openCooperationMenu = ()=>{
     isFileMenu.value = false
     isCooperationMenu.value = true
+}
+
+// 文件操作， 新建本地文件
+const getNewFile = ()=>{
+    emitter.emit('fileControlMsgToEditor', "newFile")
+    promptingMsg.value = "新建临时文件"
+}
+// 打开本地文件
+const getOpenFile = ()=>{
+    emitter.emit('fileControlMsgToEditor', "openFile")
+    promptingMsg.value = "打开本地文件"
+}
+// 保存到本地
+const getSaveFile = ()=>{
+    emitter.emit('fileControlMsgToEditor', "saveFile")
+    promptingMsg.value = "保存文件到本地"
+}
+// 另存为
+const getSaveNewFile = ()=>{
+    emitter.emit('fileControlMsgToEditor', "saveNewFile")
+    promptingMsg.value = "另存为"
+}
+// 导出为
+const getOutput = ()=>{
+    emitter.emit('fileControlMsgToEditor', "output")
+    promptingMsg.value = "导出渲染文件"
+}
+
+//协作编辑操作， 当前版本保存到数据库
+const getSaveToSQL = ()=>{
+    emitter.emit('fileControlMsgToEditor', "saveToSQL")
+    promptingMsg.value = "保存文件修改到数据库"
+}
+// 上传
+const getUpload = ()=>{
+    emitter.emit('fileControlMsgToEditor', "upload")
+    promptingMsg.value = "上传当前界面文件"
+}
+// 打开当前用户有权限的文章列表
+const getFileList = ()=>{
+    emitter.emit('fileControlMsgToEditor', "getFlieList")
+    promptingMsg.value = "获取文章列表"
+}
+// 评论
+const getComment = ()=>{
+    emitter.emit('fileControlMsgToEditor', "newComment")
+    promptingMsg.value = "添加评论"
+}
+// 修改权限, 删除的话单独加一个标识就好,不用加接口
+const getPermission = ()=>{
+    emitter.emit('fileControlMsgToEditor', "newPermission")
+    promptingMsg.value = "设置文章权限"
+}
+// 恢复历史版本
+const getHistory = ()=>{
+    emitter.emit('fileControlMsgToEditor', "historyBack")
+    promptingMsg.value = "恢复历史版本"
+}
+// 服务器设置
+const getClientServer = ()=>{
+    emitter.emit('fileControlMsgToEditor', "clientServer")
+    promptingMsg.value = "配置服务端"
+}
+// 预览
+const getPreview = ()=>{
+    emitter.emit('fileControlMsgToEditor', "preview")
+    promptingMsg.value = "预览"
 }
 
 //窗口控制
