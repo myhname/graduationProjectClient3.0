@@ -99,6 +99,9 @@ onMounted(() => {
     emitter.on('contentSendMsgToBottom', (value)=>{
         promptingMsg.value = value
     })
+    emitter.on('LaTexPreviewSendMsgToBottom', (value)=>{
+        promptingMsg.value = value
+    })
 })
 
 onBeforeUnmount(() => {
@@ -110,6 +113,7 @@ onBeforeUnmount(() => {
     emitter.off('IndexSendMsgToBottom')
     emitter.off('headerSendMsgToBottom')
     emitter.off('contentSendMsgToBottom')
+    emitter.off('LaTexPreviewSendMsgToBottom')
 })
 
 onUnmounted(() => {

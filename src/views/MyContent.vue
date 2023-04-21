@@ -7,7 +7,8 @@
         </div>
         <!-- 右半边渲染组件 -->
         <div class="right-preview" :class="{ present: isPresent }">
-            <MyPreview :md="markdown" />
+            <MyPreview v-if="whichPreview" :md="markdown" />
+            <MyLatexPreview v-else :latex="markdown"/>
         </div>
 
         <!-- 弹窗显示 -->
@@ -30,9 +31,10 @@ import { ref, reactive, onMounted, watch, onBeforeUnmount, onUnmounted } from 'v
 import emitter from '../untils/eventBus';
 
 //编辑渲染组件
-import MyEditor from '@/components/MyEditor.vue';
+import MyEditor from '../components/MyEditor.vue';
 import MyPreview from '../components/MyPreview.vue'
-import MyIcons from '@/components/MyIcons.vue';
+import MyLatexPreview from '../components/MyLatexPreview.vue';
+import MyIcons from '../components/MyIcons.vue';
 
 //弹窗
 import NewFileDialog from '../components/NewFileDialog.vue'
@@ -76,11 +78,15 @@ const isDialog = ref(false)
 const show = ref()
 const dialogTitle = ref()
 
+//控制渲染组件选择
+const whichPreview = ref(true)
+
 //编辑器初始化
 //文件格式和语言类型同步
 watch(fileFormat, () => {
     switch (fileFormat.value) {
         case 'md': mode.value = "markdwon"; break;
+        case 'tex': mode.value = "LaTex"; break;
         default: mode.value = "txt"
     }
     tempFile.result = tempFile.path + '.' + fileFormat.value
@@ -179,6 +185,15 @@ const saveNewFile = async () => {
     }
 }
 
+//格式控制
+watch(fileFormat,()=>{
+    if(fileFormat.value === 'tex'){
+        whichPreview.value = false
+    }else{
+        whichPreview.value = true
+    }
+})
+
 //预览
 const preview = () => {
     isPresent.value = !isPresent.value
@@ -241,6 +256,9 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "historyBack":
+                console.log("待后续完善")
+                break
+            case "addScreen":
                 console.log("待后续完善")
                 break
             case "preview":

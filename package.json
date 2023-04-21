@@ -19,6 +19,7 @@
     "electron": "^24.1.2",
     "electron-win-state": "^1.1.22",
     "highlight.js": "^11.7.0",
+    "latex.js": "^0.12.4",
     "mitt": "^3.0.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3"

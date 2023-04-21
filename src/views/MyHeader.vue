@@ -39,7 +39,7 @@
         </div>
         <!-- 右侧控制组件 -->
         <div class="header-right">
-            <div class="appControl" id="splitScreen" v-bind:title="splitscreenMsg" :class="{showMenu:!isEditorView}">
+            <div class="appControl" id="splitScreen" v-bind:title="splitscreenMsg" :class="{showMenu:!isEditorView}" @click="getAddScreen">
                 <MyIcons icon="w_pingmu" style="font-size: 2rem;"> </MyIcons>
             </div>
             <div class="appControl" id="present" v-bind:title="presentMsg" @click="getPreview" :class="{showMenu:!isEditorView}">
@@ -200,6 +200,11 @@ const getHistory = ()=>{
 const getClientServer = ()=>{
     emitter.emit('fileControlMsgToEditor', "clientServer")
     promptingMsg.value = "配置服务端"
+}
+// 分屏
+const getAddScreen = ()=>{
+    emitter.emit('fileControlMsgToEditor', "addScreen")
+    promptingMsg.value = "预览"
 }
 // 预览
 const getPreview = ()=>{
