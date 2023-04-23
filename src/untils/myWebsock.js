@@ -37,6 +37,18 @@ export default class SocketService {
             this.connected = true;
             // 重置重新连接的次数
             this.connectRetryCount = 3;
+            // 这个打开文章时候发，之后改！
+            // 我需要发送一个初始信息，来表明是在编辑那一篇文章，如果没有用户和当前文章直接禁止建立连接
+            let message = {
+                userUID: localStorage.getItem('userUID'),
+                docUID: localStorage.getItem('currDocUID'),
+                changeType: "startEditor",
+                startLine: 0,
+                newContent: ['0'],
+                removedNumbers: 0
+            }
+            // 第一次建立连接时候需要发送新的请求
+            this.ws.send(JSON.stringify(message))
         };
         // 1.连接服务端失败
         // 2.当连接成功之后, 服务器关闭的情况

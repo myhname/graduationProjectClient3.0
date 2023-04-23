@@ -2,8 +2,7 @@
     <div class="box">
         <!-- 左半边编辑组件 -->
         <div class="left-editor" :class="{ disNone: isPresent }">
-            <MyEditor @newMarkdown="getMarkDown" :md="startText" @getLineNumber="getLineNumbers"
-                @updateData="receiveUpdateData" ref="editor" />
+            <MyEditor @newMarkdown="getMarkDown" :md="startText" @getLineNumber="getLineNumbers" ref="editor" />
         </div>
         <!-- 右半边渲染组件 -->
         <div class="right-preview" :class="{ present: isPresent }">
@@ -38,6 +37,8 @@ import MyIcons from '../components/MyIcons.vue';
 
 //弹窗
 import NewFileDialog from '../components/NewFileDialog.vue'
+
+import SocketService from '../untils/myWebsock'
 
 //显示控制（预览功能）
 const isPresent = ref(false)
@@ -80,6 +81,14 @@ const dialogTitle = ref()
 
 //控制渲染组件选择
 const whichPreview = ref(true)
+
+//协同编辑, 建立websocket链接
+const connect = ref()
+//用户身份，当前文章
+let identity = {
+    userUID: localStorage.getItem('userUID') || 0,
+    docUID: localStorage.getItem('currDocUID') || 0
+}
 
 //编辑器初始化
 //文件格式和语言类型同步
@@ -205,8 +214,21 @@ const closeDialog = ()=>{
 }
 
 //协同编辑部分，这个哪怕本地编辑也会触发，有点问题
-const receiveUpdateData = (value) => {
-    console.log("后续完善")
+
+//建立websocket链接
+connect.value = SocketService.Instance
+const websocketConnect = ()=>{
+  SocketService.Instance.connect()
+  connect.value = SocketService.Instance
+}
+//断开链接，更换文章需要重新建立连接
+const websocketDisConnect = ()=>{
+  connect.value.close()
+}
+//发生消息
+const sendData = (value)=>{
+  connect.value.send(value)
+  console.log("send this data")
 }
 
 onMounted(async () => {
@@ -259,6 +281,7 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "addScreen":
+                websocketConnect()
                 console.log("待后续完善")
                 break
             case "preview":
@@ -312,16 +335,24 @@ onMounted(async () => {
             promptingMsg.value = "当前语言格式暂不支持快捷操作"
         }
     })
+
+    emitter.on('updateMsgNeedSendToServer', (value)=>{
+        sendData(Object.assign(identity,value));
+        console.log(value)
+    })
 })
 
 //发送提示信息
-watch(promptingMsg, (value) => {
+watch(promptingMsg, () => {
     emitter.emit('contentSendMsgToBottom', promptingMsg.value)
 })
 
 //这里要再调用一次保存
 onBeforeUnmount(() => {
+    autoSave()
     emitter.off('editorUtilsMsgToContent')
+    emitter.off('fileControlMsgToEditor')
+    emitter.off('updateMsgNeedSendToServer')
 })
 
 onUnmounted(() => {

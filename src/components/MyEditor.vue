@@ -4,7 +4,7 @@
 
 <script setup>
 
-import { ref, onMounted, defineProps, computed, watch ,reactive,onBeforeUnmount} from 'vue';
+import { ref, onMounted, defineProps, computed, watch, reactive, onBeforeUnmount } from 'vue';
 
 import emitter from '../untils/eventBus'
 
@@ -58,15 +58,13 @@ const thisLine = ref()
 //赋值载体, 这里要用多一个载体去获值,不然会重复赋值卡顿
 let code = ref();
 
-//协作时候辅助更新单行数据
 //主动更新
-const theChangingContent = reactive({
-    "line":null,
-    "content":null
-})
-//被动改变
-const receiveLine = ref()
-const receiveContent = ref()
+let theChangingContent = {
+    changeType:null,
+    startLine: 0,
+    newContent: null,
+    removedNumbers: 0
+}
 
 //接收一个初始值
 const props = defineProps({
@@ -80,7 +78,7 @@ const start = computed(() => {
     return props.md
 })
 //返回变更后的值
-const emit = defineEmits(["newMarkdown", "getLineNumber","updateData"])
+const emit = defineEmits(["newMarkdown", "getLineNumber"])
 
 //获取初始内容
 watch(start, () => {
@@ -95,11 +93,7 @@ watch(markdown, () => {
 //返回行数
 watch(lineNumbers, () => {
     emit("getLineNumber", lineNumbers.value)
-})
-//主动更新值，发送,这个要改
-watch(thisLine, () => {
-    emit("updateData",theChangingContent)
-})
+})  
 
 onMounted(() => {
     //向底部状态栏发送信息, 控制显示
@@ -137,13 +131,28 @@ onMounted(() => {
             lineNumbers.value = editor.lineCount()
             //获得鼠标位置，这个需要动态获得，放在这里只能在位置改变时候获得，但实际上我们需要在点来点去得时候也边，所以在用得时候点击触发一次就好
             thisLine.value = editor.getCursor()
-            theChangingContent.line = thisLine.value.line + 1
-            theChangingContent.content = editor.getLine(thisLine.value.line)
         }),
         //代码提示这个不知道是不支持markdown还是我现在配置不够，反正不能用
         editor.on('inputRead', () => {
             editor.showHint()
         })
+
+    editor.on('changes', (instance, changes) => {
+        for (let i = 0; i < changes.length; i++) {
+            let change = changes[i]
+            console.log("----------------")
+            theChangingContent.changeType = change.origin
+            // 行号从零开始计算
+            theChangingContent.startLine = change.from.line + 1
+            let newList = []
+            for(let j=0;j<change.text.length;j++){
+                newList.push(editor.getLine(change.from.line + j))
+            }
+            theChangingContent.newContent = newList
+            theChangingContent.removedNumbers = change.removed.length
+            emitter.emit('updateMsgNeedSendToServer', theChangingContent)
+        }
+    })
     //设置大小
     editor.setSize("100%", "100%")
 })
@@ -396,7 +405,7 @@ defineExpose({
     getCursor,
 })
 
-onBeforeUnmount(()=>{
+onBeforeUnmount(() => {
     emitter.emit('editorSendMsgToBottom', false)
 })
 
