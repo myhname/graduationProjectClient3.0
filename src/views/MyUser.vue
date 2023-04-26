@@ -13,6 +13,7 @@
                         <label for="passwordValue">密 码：</label>
                         <!-- 单纯获取内容用v-model="password"更好 -->
                         <input ref="password" type="password">
+                        <h5> 若忘记密码请联系管理员 </h5>
                     </div>
                 </form>
             </div>
@@ -29,9 +30,6 @@
                 <button id="loginBtn" @click="getLogin" :class="{ btnColor: !isShow }">登录</button>
                 <button id="registerBtn" @click="getRegister" :class="{ btnColor: isShow }">注册</button>
             </div>
-        </div>
-        <div class="missPassword">
-            <button type="button" id="missPasswordBtn">忘记密码</button>
         </div>
         <div class="disAccountControl">
             <button type="button" id="deleteBtn" @click="getDelete">注销账户</button>

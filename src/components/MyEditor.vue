@@ -19,6 +19,7 @@ import 'codemirror/mode/htmlmixed/htmlmixed';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/css/css';
 import 'codemirror/mode/vue/vue';
+import 'codemirror/mode/stex/stex'
 //扩展功能
 import 'codemirror/addon/selection/active-line.js';//光标行背景高亮
 import 'codemirror/addon/display/fullscreen';//全屏显示
@@ -60,7 +61,7 @@ let code = ref();
 
 //主动更新
 let theChangingContent = {
-    changeType:null,
+    changeType: null,
     startLine: 0,
     newContent: null,
     removedNumbers: 0
@@ -93,7 +94,7 @@ watch(markdown, () => {
 //返回行数
 watch(lineNumbers, () => {
     emit("getLineNumber", lineNumbers.value)
-})  
+})
 
 onMounted(() => {
     //向底部状态栏发送信息, 控制显示
@@ -103,6 +104,12 @@ onMounted(() => {
     editor = codemirror.fromTextArea(mdText.value, {
         value: markdown.value,//初始值
         //切换主题还是切换切换编辑器后续定
+        mode: {
+            name: "stex", // 使用LaTex语法高亮插件
+            inlineMath: [["$", "$"], ["\\(", "\\)"]], // 定义LaTex内联公式
+            blockMath: [["$$", "$$"], ["\\[", "\\]"]], // 定义LaTex块级公式
+            fold: "brace" // 支持代码折叠
+        },
         mode: "markdown",//markdown语法高亮
         //主题样式，具体预览效果参考：https://codemirror.net/5/demo/theme.html
         theme: "paraiso-light 3024-day",
@@ -145,7 +152,7 @@ onMounted(() => {
             // 行号从零开始计算
             theChangingContent.startLine = change.from.line + 1
             let newList = []
-            for(let j=0;j<change.text.length;j++){
+            for (let j = 0; j < change.text.length; j++) {
                 newList.push(editor.getLine(change.from.line + j))
             }
             theChangingContent.newContent = newList
@@ -389,6 +396,15 @@ const addOrderedList = () => {
     }
 }
 
+const switchMode = (currMode)=>{
+    if(currMode === "markdown"){
+        editor.setOption("mode","markdown")
+        console.log(1)
+    }else if(currMode === "LaTex"){
+        editor.setOption("mode","stex")
+    }
+}
+
 //返回给父组件
 defineExpose({
     getUndo,
@@ -403,6 +419,7 @@ defineExpose({
     addUnorderedList,
     addOrderedList,
     getCursor,
+    switchMode,
 })
 
 onBeforeUnmount(() => {

@@ -198,8 +198,10 @@ const saveNewFile = async () => {
 watch(fileFormat,()=>{
     if(fileFormat.value === 'tex'){
         whichPreview.value = false
+        editor.value.switchMode("LaTex")
     }else{
         whichPreview.value = true
+        editor.value.switchMode("markdown")
     }
 })
 

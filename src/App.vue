@@ -84,7 +84,7 @@ import MyBottom from './views/MyBottom.vue'
   position: absolute;
   width:100%;
   overflow: hidden;
-  transition: all .8s cubic-bezier(.55, 0, .1, 1);
+  transition: all .2s cubic-bezier(.55, 0, .1, 1);
 }
 
 /* 离开 */
