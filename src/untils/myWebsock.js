@@ -34,6 +34,7 @@ export default class SocketService {
         // 连接成功的事件
         this.ws.onopen = () => {
             console.log('连接服务端成功了');
+            emitter.emit('sendConnectionMSG', true)
             this.connected = true;
             // 重置重新连接的次数
             this.connectRetryCount = 3;
@@ -54,6 +55,7 @@ export default class SocketService {
         // 2.当连接成功之后, 服务器关闭的情况
         this.ws.onclose = () => {
             console.log('连接服务端失败');
+            emitter.emit('sendConnectionMSG', false)
             this.connected = false;
             this.connectRetryCount++;
             setTimeout(() => {
@@ -94,7 +96,10 @@ export default class SocketService {
         }
     }
     close() {
-        this.ws.close()
+        this.ws.onclose = ()=>{
+            this.connected = false;
+        }
+        emitter.emit('sendConnectionMSG', false)
     }
     // receive(){
     //     let data;

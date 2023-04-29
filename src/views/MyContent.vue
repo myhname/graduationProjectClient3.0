@@ -6,8 +6,8 @@
         </div>
         <!-- 右半边渲染组件 -->
         <div class="right-preview" :class="{ present: isPresent }">
-            <MyPreview v-if="whichPreview" :md="markdown" />
-            <MyLatexPreview v-else :latex="markdown"/>
+            <MyPreview v-if="whichPreview" :md="markdown" ref="mdPreview"/>
+            <MyLatexPreview v-else :latex="markdown" ref="LaTexPreview"/>
         </div>
 
         <!-- 弹窗显示 -->
@@ -45,6 +45,8 @@ const isPresent = ref(false)
 
 //获取组件
 const editor = ref()
+const mdPreview = ref()
+const LaTexPreview = ref()
 
 //文本信息, 初始值，避免初始化以及后续处理混乱
 const startText = ref("# markdown-editor")
@@ -84,6 +86,8 @@ const whichPreview = ref(true)
 
 //协同编辑, 建立websocket链接
 const connect = ref()
+// 当前是否处于协作状态
+const isCooperation = ref(false)
 //用户身份，当前文章
 let identity = {
     userUID: localStorage.getItem('userUID') || 0,
@@ -233,6 +237,10 @@ const sendData = (value)=>{
   console.log("send this data")
 }
 
+watch(isCooperation,()=>{
+    emitter.emit('sendCooperatrionMSGToHeader', isCooperation.value)
+})
+
 onMounted(async () => {
     emitter.emit('leftToolsShow', true)
     //通过electron获取初始文本的内容
@@ -262,10 +270,17 @@ onMounted(async () => {
                 saveNewFile()
                 break
             case "output":
-                console.log("待后续完善")
+                if(whichPreview.value) mdPreview.value.exportPDF()
+                else LaTexPreview.value.exportPDF()
                 break
             case "saveToSQL":
                 console.log("待后续完善")
+                break
+            case "startConnect":
+                websocketConnect()
+                break
+            case "closeConnect":
+                websocketDisConnect()
                 break
             case "upload":
                 console.log("待后续完善")
@@ -283,7 +298,6 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "addScreen":
-                websocketConnect()
                 console.log("待后续完善")
                 break
             case "preview":
@@ -339,8 +353,24 @@ onMounted(async () => {
     })
 
     emitter.on('updateMsgNeedSendToServer', (value)=>{
-        sendData(Object.assign(identity,value));
+        if(isCooperation.value){
+            sendData(Object.assign(identity,value));
+        }
         console.log(value)
+    })
+
+    // 接收websocket连接信息
+    emitter.on('sendConnectionMSG', (value)=>{
+        isCooperation.value = value
+    })
+
+    // 接收改变
+    emitter.on('sendWebSocketReceiveData', (value)=>{
+        if(value.substr(0,5) === "Error"){
+            promptingMsg.value = value
+        }else {
+            emitter.emit('sendUpdateMSGToEditor', JSON.parse(value))
+        }
     })
 })
 
@@ -355,6 +385,8 @@ onBeforeUnmount(() => {
     emitter.off('editorUtilsMsgToContent')
     emitter.off('fileControlMsgToEditor')
     emitter.off('updateMsgNeedSendToServer')
+    emitter.off('sendConnectionMSG')
+    emitter.off('sendWebSocketReceiveData')
 })
 
 onUnmounted(() => {

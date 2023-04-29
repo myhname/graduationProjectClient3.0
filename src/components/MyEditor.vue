@@ -4,7 +4,7 @@
 
 <script setup>
 
-import { ref, onMounted, defineProps, computed, watch, reactive, onBeforeUnmount } from 'vue';
+import { ref, onMounted, defineProps, computed, watch, reactive, onBeforeUnmount, createElementVNode } from 'vue';
 
 import emitter from '../untils/eventBus'
 
@@ -66,6 +66,9 @@ let theChangingContent = {
     newContent: null,
     removedNumbers: 0
 }
+
+//编辑列表
+let map = new Map()
 
 //接收一个初始值
 const props = defineProps({
@@ -162,7 +165,30 @@ onMounted(() => {
     })
     //设置大小
     editor.setSize("100%", "100%")
+
+    // 接收改变
+    emitter.on('sendUpdateMSGToEditor', (value) => {
+        switch (value.changeType) {
+            case '*compose':
+                break
+            case '+input':
+                break
+            case '+delete':
+                break
+            case 'paste':
+                break
+            default:
+                console.log("Error:" + value)
+                break
+        }
+    })
 })
+
+// 行锁
+map.set(10, 10)
+const getBlock =()=>{
+    var a = createElementVNode('div')
+}
 
 //工具方法
 //获得鼠标当前位置
@@ -396,12 +422,11 @@ const addOrderedList = () => {
     }
 }
 
-const switchMode = (currMode)=>{
-    if(currMode === "markdown"){
-        editor.setOption("mode","markdown")
-        console.log(1)
-    }else if(currMode === "LaTex"){
-        editor.setOption("mode","stex")
+const switchMode = (currMode) => {
+    if (currMode === "markdown") {
+        editor.setOption("mode", "markdown")
+    } else if (currMode === "LaTex") {
+        editor.setOption("mode", "stex")
     }
 }
 
@@ -424,6 +449,7 @@ defineExpose({
 
 onBeforeUnmount(() => {
     emitter.emit('editorSendMsgToBottom', false)
+    emitter.off('sendUpdateMSGToEditor')
 })
 
 </script>

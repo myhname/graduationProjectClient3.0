@@ -23,6 +23,8 @@
                 <button type="button" @click="openCooperationMenu">协作</button>
                 <div class="menu" :class="{showMenu:!isCooperationMenu}">
                     <ul>
+                        <li v-if="!isCooperation" @click="getStartConnect">开始协作</li>
+                        <li v-else @click="getCloseConnect">结束协作</li>
                         <li @click="getUpload">上传</li>
                         <li @click="getFileList">打开...</li>
                         <li @click="getComment">评论</li>
@@ -100,6 +102,9 @@ const isOnline = ref(false)
 const isFileMenu = ref(false)
 const isCooperationMenu = ref(false)
 
+//协作状态控制
+const isCooperation = ref(false)
+
 //判别当前页面状态，改变控制
 watch(currView, () => {
     switch (currView.value) {
@@ -170,6 +175,16 @@ const getOutput = ()=>{
 const getSaveToSQL = ()=>{
     emitter.emit('fileControlMsgToEditor', "saveToSQL")
     promptingMsg.value = "保存文件修改到数据库"
+}
+// 开启websocket连接
+const getStartConnect = ()=>{
+    emitter.emit('fileControlMsgToEditor', "startConnect")
+    promptingMsg.value = "开始协作模式"
+}
+// 断开websocket连接
+const getCloseConnect = ()=>{
+    emitter.emit('fileControlMsgToEditor', "closeConnect")
+    promptingMsg.value = "结束协作模式"
 }
 // 上传
 const getUpload = ()=>{
@@ -249,10 +264,17 @@ onMounted(() => {
     })
     emitter.on('isOnlineReady', (value)=>{
         isOnline.value = value
+        if(value === true){
+            isEditorView.value = true
+            isFileMenu.value = true
+        }
     })
     //接收文件信息
     emitter.on('titleNameChangeToHeader',(value)=>{
         titleName.value = value
+    })
+    emitter.on('sendCooperatrionMSGToHeader', (value)=>{
+        isCooperation.value = value
     })
 })
 
