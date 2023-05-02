@@ -43,7 +43,6 @@ import 'codemirror/addon/search/jump-to-line';
 import 'codemirror/addon/dialog/dialog';//提供一种查询用户文本输入的方法
 import 'codemirror/addon/search/searchcursor'
 import 'codemirror/addon/search/search'
-import { f } from 'html2pdf.js';
 
 //获取编辑器
 let editor;
@@ -68,10 +67,11 @@ let theChangingContent = {
     removedNumbers: 0
 }
 // 辨别是否为主动更新
-let autoFlag = false
+// let autoFlag = false
+// 不需要加标识，因为包裹起来之后这个操作类型就无法识别了
 
 //编辑列表
-let map = new Map()
+let lineBlockMap = new Map()
 
 //接收一个初始值
 const props = defineProps({
@@ -151,22 +151,21 @@ onMounted(() => {
         })
 
     editor.on('changes', (instance, changes) => {
-        let i=1
         for (let i = 0; i < changes.length; i++) {
-            if (autoFlag) {
-                autoFlag = false
-                continue
-                i++
-            }
-            console.log("i=" + i)
+            // if (autoFlag) {
+            //     autoFlag = false
+            //     continue
+            //     i++
+            // }
+            // console.log("i=" + i)
             let change = changes[i]
             console.log("----------------")
             theChangingContent.changeType = change.origin || "undefined"
-            console.log("这是codemirror：")
+            // console.log("这是codemirror：")
             console.log(change)
-            console.log("----------------")
+            // console.log("----------------")
             // 行号从零开始计算
-            if(change.from.line < change.to.line) theChangingContent.startLine = change.from.line + 1
+            if (change.from.line < change.to.line) theChangingContent.startLine = change.from.line + 1
             else theChangingContent.startLine = change.to.line + 1
             let newList = []
             for (let j = 0; j < change.text.length; j++) {
@@ -183,7 +182,7 @@ onMounted(() => {
     // 接收改变
     emitter.on('sendUpdateMSGToEditor', (value) => {
         editor.operation(() => {
-            autoFlag = true
+            // autoFlag = true
             switch (value.changeType) {
                 case '*compose':
                     replaceLine(value.startLine - 1, value.newContent[0])
@@ -194,59 +193,89 @@ onMounted(() => {
                         let currCursor = editor.getCursor()
                         newLine(value.startLine)
                         if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + 1, ch: currCursor.ch })
-                    }else replaceLine(value.startLine - 1, value.newContent[0])
+                    } else replaceLine(value.startLine - 1, value.newContent[0])
                     break
                 case '+delete':
                     if (value.removedNumbers === 1) {
                         // 行内删除内容
                         replaceLine(value.startLine - 1, value.newContent[0])
-                    }else if(value.removedNumbers === 2){
-                        // 删除了一个空行
-                        deleteNullLine(value.startLine)
-                    }else{
-                        // 删除多行
+                    } else {
+                        let currCursor = editor.getCursor()
+                        // 删除行
+                        for (let i = 0; i < value.removedNumbers - 1; i++) {
+                            replaceLine(value.startLine, '')
+                            deleteNullLine(value.startLine)
+                        }
+                        replaceLine(value.startLine - 1, value.newContent[0])
+                        // 重新定位光标
+                        if (currCursor.line > value.startLine) {
+                            currCursor.line = currCursor.line - value.removedNumbers + 1
+                            editor.setCursor(currCursor)
+                        }
                     }
                     break
                 case 'paste':
                     // 如果被替换多行，先删除
                     if (value.removedNumbers != 1) {
                         let currCursor = editor.getCursor()
-                        for (let i = 1; i < value.removedNumbers; i++) {
-                            deleteLine(value.startLine)
+                        // 删除行
+                        for (let i = 0; i < value.removedNumbers - 1; i++) {
+                            replaceLine(value.startLine, '')
+                            deleteNullLine(value.startLine)
                         }
-                        // 光标位置
-                        if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line - value.removedNumbers + 1, ch: currCursor.ch })
+                        replaceLine(value.startLine - 1, value.newContent[0])
+                        // 重新定位光标
+                        if (currCursor.line > value.startLine) {
+                            currCursor.line = currCursor.line - value.removedNumbers + 1
+                            editor.setCursor(currCursor)
+                        }
                     }
-                    replaceLine(value.startLine - 1, value.newContent[0])
-                    if (value.removedNumbers != 1) {
-                        let currCursor = editor.getCursor()
-                        for (let i = 1; i < value.newContent.length; i++) {
-                            newLine(value.startLine - 1 + i)
-                            replaceLine(value.startLine - 1 + i, value.newContent[i])
-                        }
-                        // 光标位置
-                        if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + value.newContent.length - 1, ch: currCursor.ch })
+                    // 直接替换内容
+                    let currCursor = editor.getCursor()
+                    replaceLine(value.startLine - 1, value.newContent.join('\n'))
+                    // 重新定位光标
+                    if (currCursor.line > value.startLine) {
+                        currCursor.line = currCursor.line + value.newContent.length - 1
+                        editor.setCursor(currCursor)
                     }
                     break
                 case "undefined":
-                    console.log("？？？？？？？？？？？？？")
+                    // console.log("？？？？？？？？？？？？？")
+                    // 这个是防止识别被动改变
                     break
                 case "undo":
-                    getUndo()
+                    // 避免回退了别人的改动，协同编辑时禁用undo
+                    console.log("禁止回退")
                 default:
-                    console.log("Error:" + value)
+                    console.log("Error: 未定义：" + value)
                     break
             }
         })
         editor.endOperation()
     })
+
+    getBlock()
 })
 
 // 行锁
-map.set(10, 10)
-const getBlock = () => {
-    var a = createElementVNode('div')
-}
+lineBlockMap.set(10, 10)
+// const getBlock = () => {
+//     // 获取不到句柄太奇怪了
+//     // let line = editor.getLineHandle(10)
+//     // console.log(line)
+//     // editor.addLineClass(10, "background",'blockLineSpecialBackground')
+//     console.log("1aaaaaaa")
+//     let thisElement = document.getElementsByClassName('CodeMirror-code')
+//     let child = thisElement[0].children
+//     console.log(thisElement)
+//     console.log("==================")
+//     // 奇怪，找不到没有类名的子元素
+//     console.log(thisElement[0].lastChild)
+//     let node = document.createElement("div");
+//     let a = document.querySelector('.CodeMirror-code')
+//     a.appendChild(node)
+//     console.log(a)
+// }
 
 // 替换当前行内容
 const replaceLine = (line, newFile) => {
@@ -262,36 +291,27 @@ const newLine = (line) => {
     editor.replaceRange("\n", { line, ch: 0 }, null, 'donotmerge')
 }
 
-// 删除一行
-const deleteLine = (line) => {
-    let oldContent = editor.getLine(line)
-    let from = { line: line - 1, ch: 0 }
-    let to = { line: line, ch: oldContent.length }
-    editor.replaceRange(editor.getLine(line - 1), from, to)
-    console.log("标识信息：" + autoFlag)
-    console.log("======================")
-}
-
 // 删除一个空行
-const deleteNullLine = (line)=>{
+const deleteNullLine = (line) => {
     // 是否为最后一行
-    let from,to
-    if(line === (lineNumbers.value-1)){
-      let oldContent = editor.getLine(line-1)
-      if(oldContent == '') from = {line:line-1,ch:0} 
-      else from = {line:line-1,ch:oldContent.length}
-      to = {line,ch:0}
-    }else{
-        from = {line,ch:0}
-        to = {line:line+1,ch:0}
+    let from, to
+    if (line === (lineNumbers.value - 1)) {
+        let oldContent = editor.getLine(line - 1)
+        if (oldContent == '') from = { line: line - 1, ch: 0 }
+        else from = { line: line - 1, ch: oldContent.length }
+        to = { line, ch: 0 }
+    } else {
+        from = { line, ch: 0 }
+        to = { line: line + 1, ch: 0 }
     }
-    editor.replaceRange('',from,to)
+    editor.replaceRange('', from, to)
 }
 // 行内内全删除
 
+// 测试用
 const testSetValue = (line, newList, removedNumbers) => {
     editor.operation(() => {
-        autoFlag = true
+        // autoFlag = true
         newLine(line)
     })
     editor.endOperation()
@@ -574,4 +594,18 @@ onBeforeUnmount(() => {
 @import url("../../node_modules/codemirror/addon/scroll/simplescrollbars.css");
 @import url("../../node_modules/codemirror/addon/fold/foldgutter.css");
 @import url("../../node_modules/codemirror/addon/dialog/dialog.css");
+
+.blockLineSpecialBackground {
+    background-color: black;
+    z-index: 5;
+}
+.test {
+    background-color: black;
+    width: 5rem;
+    height: 5rem;
+    position: absolute;
+    left: 50%;
+    width: 20%;
+    z-index: 10;
+}
 </style>

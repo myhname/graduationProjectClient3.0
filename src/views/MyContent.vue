@@ -372,7 +372,7 @@ onMounted(async () => {
         if(isCooperation.value){
             sendData(Object.assign(identity,value));
         }
-        // console.log(identity,value)
+        // console.log(value)
     })
 
     // 接收websocket连接信息
