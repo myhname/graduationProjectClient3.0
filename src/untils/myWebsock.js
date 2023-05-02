@@ -66,7 +66,8 @@ export default class SocketService {
         this.ws.onmessage = msg => {
             let data = msg.data.toString()
             // data.subString()
-            console.log("websocket.js中接收到了信息：" + data)
+            console.log("websocket.js中接收到了信息：")
+            console.log(JSON.parse(data))
             emitter.emit('sendWebSocketReceiveData', data)
         };
     }
@@ -96,9 +97,11 @@ export default class SocketService {
         }
     }
     close() {
-        this.ws.onclose = ()=>{
-            this.connected = false;
-        }
+        this.connected = false;
+        this.ws.close()
+        // 主动断开连接后不再自动重连
+        this.ws.onclose = ()=>{}
+        console.log("连接已断开")
         emitter.emit('sendConnectionMSG', false)
     }
     // receive(){

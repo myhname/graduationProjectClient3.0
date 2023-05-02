@@ -40,6 +40,8 @@ import NewFileDialog from '../components/NewFileDialog.vue'
 
 import SocketService from '../untils/myWebsock'
 
+import {openDocument} from '../request/document'
+
 //显示控制（预览功能）
 const isPresent = ref(false)
 
@@ -231,7 +233,7 @@ const websocketConnect = ()=>{
 const websocketDisConnect = ()=>{
   connect.value.close()
 }
-//发生消息
+//发送消息
 const sendData = (value)=>{
   connect.value.send(value)
   console.log("send this data")
@@ -240,6 +242,19 @@ const sendData = (value)=>{
 watch(isCooperation,()=>{
     emitter.emit('sendCooperatrionMSGToHeader', isCooperation.value)
 })
+
+// 打开文档
+const getOpenDoc = (docUID)=>{
+    openDocument(docUID).then((res)=>{
+        let curr = res.object
+        // 去掉描述先
+        curr.shift()
+        startText.value = curr.join("\n")
+        localStorage.setItem('currDocUID',docUID)
+        console.log("CurrDocUID是：" + localStorage.getItem('currDocUID'))
+        identity.docUID = docUID
+    })
+}
 
 onMounted(async () => {
     emitter.emit('leftToolsShow', true)
@@ -286,7 +301,7 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "getFlieList":
-                console.log("待后续完善")
+                getOpenDoc(10000008)
                 break
             case "newComment":
                 console.log("待后续完善")
@@ -298,6 +313,7 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "addScreen":
+                editor.value.testSetValue(20,["aad"],1)
                 console.log("待后续完善")
                 break
             case "preview":
@@ -356,7 +372,7 @@ onMounted(async () => {
         if(isCooperation.value){
             sendData(Object.assign(identity,value));
         }
-        console.log(value)
+        // console.log(identity,value)
     })
 
     // 接收websocket连接信息

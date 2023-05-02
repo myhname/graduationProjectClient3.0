@@ -43,6 +43,7 @@ import 'codemirror/addon/search/jump-to-line';
 import 'codemirror/addon/dialog/dialog';//提供一种查询用户文本输入的方法
 import 'codemirror/addon/search/searchcursor'
 import 'codemirror/addon/search/search'
+import { f } from 'html2pdf.js';
 
 //获取编辑器
 let editor;
@@ -66,6 +67,8 @@ let theChangingContent = {
     newContent: null,
     removedNumbers: 0
 }
+// 辨别是否为主动更新
+let autoFlag = false
 
 //编辑列表
 let map = new Map()
@@ -148,12 +151,23 @@ onMounted(() => {
         })
 
     editor.on('changes', (instance, changes) => {
+        let i=1
         for (let i = 0; i < changes.length; i++) {
+            if (autoFlag) {
+                autoFlag = false
+                continue
+                i++
+            }
+            console.log("i=" + i)
             let change = changes[i]
             console.log("----------------")
-            theChangingContent.changeType = change.origin
+            theChangingContent.changeType = change.origin || "undefined"
+            console.log("这是codemirror：")
+            console.log(change)
+            console.log("----------------")
             // 行号从零开始计算
-            theChangingContent.startLine = change.from.line + 1
+            if(change.from.line < change.to.line) theChangingContent.startLine = change.from.line + 1
+            else theChangingContent.startLine = change.to.line + 1
             let newList = []
             for (let j = 0; j < change.text.length; j++) {
                 newList.push(editor.getLine(change.from.line + j))
@@ -168,26 +182,119 @@ onMounted(() => {
 
     // 接收改变
     emitter.on('sendUpdateMSGToEditor', (value) => {
-        switch (value.changeType) {
-            case '*compose':
-                break
-            case '+input':
-                break
-            case '+delete':
-                break
-            case 'paste':
-                break
-            default:
-                console.log("Error:" + value)
-                break
-        }
+        editor.operation(() => {
+            autoFlag = true
+            switch (value.changeType) {
+                case '*compose':
+                    replaceLine(value.startLine - 1, value.newContent[0])
+                    break
+                case '+input':
+                    // 两种情况：英文或者换行
+                    if (value.newContent.length > 1) {
+                        let currCursor = editor.getCursor()
+                        newLine(value.startLine)
+                        if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + 1, ch: currCursor.ch })
+                    }else replaceLine(value.startLine - 1, value.newContent[0])
+                    break
+                case '+delete':
+                    if (value.removedNumbers === 1) {
+                        // 行内删除内容
+                        replaceLine(value.startLine - 1, value.newContent[0])
+                    }else if(value.removedNumbers === 2){
+                        // 删除了一个空行
+                        deleteNullLine(value.startLine)
+                    }else{
+                        // 删除多行
+                    }
+                    break
+                case 'paste':
+                    // 如果被替换多行，先删除
+                    if (value.removedNumbers != 1) {
+                        let currCursor = editor.getCursor()
+                        for (let i = 1; i < value.removedNumbers; i++) {
+                            deleteLine(value.startLine)
+                        }
+                        // 光标位置
+                        if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line - value.removedNumbers + 1, ch: currCursor.ch })
+                    }
+                    replaceLine(value.startLine - 1, value.newContent[0])
+                    if (value.removedNumbers != 1) {
+                        let currCursor = editor.getCursor()
+                        for (let i = 1; i < value.newContent.length; i++) {
+                            newLine(value.startLine - 1 + i)
+                            replaceLine(value.startLine - 1 + i, value.newContent[i])
+                        }
+                        // 光标位置
+                        if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + value.newContent.length - 1, ch: currCursor.ch })
+                    }
+                    break
+                case "undefined":
+                    console.log("？？？？？？？？？？？？？")
+                    break
+                case "undo":
+                    getUndo()
+                default:
+                    console.log("Error:" + value)
+                    break
+            }
+        })
+        editor.endOperation()
     })
 })
 
 // 行锁
 map.set(10, 10)
-const getBlock =()=>{
+const getBlock = () => {
     var a = createElementVNode('div')
+}
+
+// 替换当前行内容
+const replaceLine = (line, newFile) => {
+    let oldeContent = editor.getLine(line)
+    let from = { line: line, ch: 0 }
+    let to = { line: line, ch: (oldeContent.length || 0) }
+    editor.replaceRange(newFile, from, to)
+}
+
+// 新建一行
+const newLine = (line) => {
+    // 下一行的行首插入换行符
+    editor.replaceRange("\n", { line, ch: 0 }, null, 'donotmerge')
+}
+
+// 删除一行
+const deleteLine = (line) => {
+    let oldContent = editor.getLine(line)
+    let from = { line: line - 1, ch: 0 }
+    let to = { line: line, ch: oldContent.length }
+    editor.replaceRange(editor.getLine(line - 1), from, to)
+    console.log("标识信息：" + autoFlag)
+    console.log("======================")
+}
+
+// 删除一个空行
+const deleteNullLine = (line)=>{
+    // 是否为最后一行
+    let from,to
+    if(line === (lineNumbers.value-1)){
+      let oldContent = editor.getLine(line-1)
+      if(oldContent == '') from = {line:line-1,ch:0} 
+      else from = {line:line-1,ch:oldContent.length}
+      to = {line,ch:0}
+    }else{
+        from = {line,ch:0}
+        to = {line:line+1,ch:0}
+    }
+    editor.replaceRange('',from,to)
+}
+// 行内内全删除
+
+const testSetValue = (line, newList, removedNumbers) => {
+    editor.operation(() => {
+        autoFlag = true
+        newLine(line)
+    })
+    editor.endOperation()
 }
 
 //工具方法
@@ -445,6 +552,8 @@ defineExpose({
     addOrderedList,
     getCursor,
     switchMode,
+    getBlock,
+    testSetValue,
 })
 
 onBeforeUnmount(() => {

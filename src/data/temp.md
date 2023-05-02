@@ -37,15 +37,7 @@ Vue.use(VueMarkdownEditor);
 </template>
 
 <script>
-  export default {
-    data() {
-      return {
-        text: '',
-      };
-    },
-  };
-</script>
-```
+  expor
 
 ## Refrence
 

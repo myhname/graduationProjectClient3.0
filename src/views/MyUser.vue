@@ -46,9 +46,7 @@ import emitter from "../untils/eventBus"
 //引入方法以及路由
 import { useRouter } from 'vue-router'
 
-import { login } from '../request/user'
-import { register } from '../request/user'
-import { deleteUser } from '../request/user'
+import { login,register,deleteUser } from '../request/user'
 
 const router = useRouter()
 
