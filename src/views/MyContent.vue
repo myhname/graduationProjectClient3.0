@@ -313,7 +313,7 @@ onMounted(async () => {
                 console.log("待后续完善")
                 break
             case "addScreen":
-                editor.value.testSetValue(20,["aad"],1)
+                editor.value.newCommentDiv(2)
                 console.log("待后续完善")
                 break
             case "preview":
@@ -369,7 +369,7 @@ onMounted(async () => {
     })
 
     emitter.on('updateMsgNeedSendToServer', (value)=>{
-        if(isCooperation.value){
+        if(isCooperation.value && value.changeType != "undefined" && value.changeType != "donotmerge" && value.changeType != "undo"){
             sendData(Object.assign(identity,value));
         }
         // console.log(value)
@@ -384,7 +384,16 @@ onMounted(async () => {
     emitter.on('sendWebSocketReceiveData', (value)=>{
         if(value.substr(0,5) === "Error"){
             promptingMsg.value = value
-        }else {
+        }else if(value.substr(0,8) === "blockMSG"){
+            let currBlock = value.slice(10)
+            if(currBlock === '}'){
+                emitter.emit('sendBlovkMSGToEditor', "First")
+            }else{
+                currBlock = currBlock.slice(0,-1)
+                let blockList = currBlock.split(",")
+                emitter.emit('sendBlovkMSGToEditor', blockList)
+            }
+        }else{
             emitter.emit('sendUpdateMSGToEditor', JSON.parse(value))
         }
     })

@@ -70,8 +70,25 @@ let theChangingContent = {
 // let autoFlag = false
 // 不需要加标识，因为包裹起来之后这个操作类型就无法识别了
 
-//编辑列表
-let lineBlockMap = new Map()
+// 其他用户编辑及锁信息
+// 用户，第几行
+let blockMap = new Map()
+// 上锁的行
+let blockLineOrderedList = []
+// 保持有序，所以插入要重排，升序
+const addLineToBlockList = (line) => {
+    blockLineOrderedList.push(line)
+    if (blockLineOrderedList.length > 1) {
+        blockLineOrderedList.sort((a, b) => {
+            return a - b
+        })
+    }
+}
+const descLineFromBlockList = (line) => {
+    let index = blockLineOrderedList.indexOf(line)
+    if (index === -1) console.log("哎呀，没有")
+    else blockLineOrderedList.splice(index, 1)
+}
 
 //接收一个初始值
 const props = defineProps({
@@ -150,14 +167,28 @@ onMounted(() => {
             editor.showHint()
         })
 
+    // 包含锁定行的操作要取消
+    editor.on('beforeChange', (cm, change) => {
+        if (cm.somethingSelected()) {
+            // 获取当前选择的文本区域
+            let selections = cm.listSelections();
+            for(let i=0;i<selections.length;i++){
+                let selection = selections[i]
+                let from = {line:selection.head.line,ch:selection.head.ch}
+                let to = {line:selection.anchor.line,ch:selection.anchor.ch}
+                // 查找该区域内是否有标记
+                let marks = cm.findMarks(from,to)
+                // 如果有，取消操作
+                if(marks.length > 0){
+                    change.cancel()
+                    break
+                }
+            }
+        }
+    })
+
     editor.on('changes', (instance, changes) => {
         for (let i = 0; i < changes.length; i++) {
-            // if (autoFlag) {
-            //     autoFlag = false
-            //     continue
-            //     i++
-            // }
-            // console.log("i=" + i)
             let change = changes[i]
             console.log("----------------")
             theChangingContent.changeType = change.origin || "undefined"
@@ -179,20 +210,43 @@ onMounted(() => {
     //设置大小
     editor.setSize("100%", "100%")
 
+    // 接收锁
+    emitter.on('sendBlovkMSGToEditor', (value) => {
+        if (value === "First") return
+        for (let i = 0; i < value.length; i++) {
+            blockMap.set(Number(value[i].split('=')[0]), Number(value[i].split('=')[1]))
+            addLineToBlockList(Number(value[i].split('=')[1]))
+            getBlock(Number(value[i].split('=')[1]) - 1)
+        }
+    })
+
     // 接收改变
     emitter.on('sendUpdateMSGToEditor', (value) => {
         editor.operation(() => {
             // autoFlag = true
+            // 改变锁的信息
+            let oldLine = blockMap.get(value.userUID) || -1
+            // 新用户刚加入，第一次上锁不用解锁
+            if (oldLine != -1) {
+                // 得先解锁才能改变，行号和编辑器的序号差1
+                getNoBlock(blockLineOrderedList.indexOf(oldLine))
+                descLineFromBlockList(oldLine)
+            }
+            let endLine = value.startLine
+            let addBlockFlag = true
             switch (value.changeType) {
                 case '*compose':
                     replaceLine(value.startLine - 1, value.newContent[0])
                     break
                 case '+input':
-                    // 两种情况：英文或者换行
+                    // 两种情况：英文或者换行(换行不一定是末尾换行，只是敲了换行符)
                     if (value.newContent.length > 1) {
                         let currCursor = editor.getCursor()
+                        replaceLine(value.startLine - 1, value.newContent[0])
                         newLine(value.startLine)
+                        replaceLine(value.startLine, value.newContent[1] || "  ")
                         if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + 1, ch: currCursor.ch })
+                        endLine += 1
                     } else replaceLine(value.startLine - 1, value.newContent[0])
                     break
                 case '+delete':
@@ -233,6 +287,7 @@ onMounted(() => {
                     // 直接替换内容
                     let currCursor = editor.getCursor()
                     replaceLine(value.startLine - 1, value.newContent.join('\n'))
+                    endLine += value.newContent.length - 1
                     // 重新定位光标
                     if (currCursor.line > value.startLine) {
                         currCursor.line = currCursor.line + value.newContent.length - 1
@@ -240,43 +295,51 @@ onMounted(() => {
                     }
                     break
                 case "undefined":
-                    // console.log("？？？？？？？？？？？？？")
                     // 这个是防止识别被动改变
+                    addBlockFlag = false
                     break
                 case "undo":
                     // 避免回退了别人的改动，协同编辑时禁用undo
                     console.log("禁止回退")
+                    addBlockFlag = false
+                case "endEditor":
+                    // 结束编辑，解锁就好了
+                    blockMap.delete(value.userUID)
+                    addBlockFlag = false
                 default:
                     console.log("Error: 未定义：" + value)
+                    addBlockFlag = false
                     break
+            }
+            // 上新锁
+            if (addBlockFlag) {
+                getBlock(endLine - 1)
+                blockMap.set(value.userUID, endLine)
+                addLineToBlockList(endLine)
             }
         })
         editor.endOperation()
     })
-
-    getBlock()
 })
 
-// 行锁
-lineBlockMap.set(10, 10)
-// const getBlock = () => {
-//     // 获取不到句柄太奇怪了
-//     // let line = editor.getLineHandle(10)
-//     // console.log(line)
-//     // editor.addLineClass(10, "background",'blockLineSpecialBackground')
-//     console.log("1aaaaaaa")
-//     let thisElement = document.getElementsByClassName('CodeMirror-code')
-//     let child = thisElement[0].children
-//     console.log(thisElement)
-//     console.log("==================")
-//     // 奇怪，找不到没有类名的子元素
-//     console.log(thisElement[0].lastChild)
-//     let node = document.createElement("div");
-//     let a = document.querySelector('.CodeMirror-code')
-//     a.appendChild(node)
-//     console.log(a)
-// }
+// 加锁
+const getBlock = (line) => {
+    let start = editor.posFromIndex(editor.indexFromPos({ line: line, ch: 0 }))
+    let end = editor.posFromIndex(editor.indexFromPos({ line: line + 1, ch: 0 }))
+    // 只读可以了，但是样式覆盖不了
+    // editor.addLineClass(line,"background","locked")
+    editor.markText(start, end, { readOnly: true, css: "color: #FFFFFF; background-color: black;" })
+}
 
+// 解锁
+const getNoBlock = (which) => {
+    console.log("解锁")
+    var marks = editor.getAllMarks()
+    console.log(marks.length)
+    marks[which].clear()
+}
+
+// 协同编辑用
 // 替换当前行内容
 const replaceLine = (line, newFile) => {
     let oldeContent = editor.getLine(line)
@@ -306,15 +369,21 @@ const deleteNullLine = (line) => {
     }
     editor.replaceRange('', from, to)
 }
-// 行内内全删除
+
+//评论盒子，能加上但是不好用，没法点击
+const newCommentDiv = (line)=>{
+    let newDiv = document.createElement('div')
+    newDiv.classList.add('comment-mark')
+    newDiv.innerHTML = "+"
+    let widget = editor.addWidget({line:line,ch:editor.getLine(line).length || 0},newDiv,{above:true})
+    newDiv.addEventListener('click', ()=>{
+        console.log("展开评论")
+    })
+}
 
 // 测试用
 const testSetValue = (line, newList, removedNumbers) => {
-    editor.operation(() => {
-        // autoFlag = true
-        newLine(line)
-    })
-    editor.endOperation()
+    
 }
 
 //工具方法
@@ -573,6 +642,8 @@ defineExpose({
     getCursor,
     switchMode,
     getBlock,
+    getNoBlock,
+    newCommentDiv,
     testSetValue,
 })
 
@@ -599,13 +670,16 @@ onBeforeUnmount(() => {
     background-color: black;
     z-index: 5;
 }
-.test {
+
+.locked {
+    color: #FFFFFF;
     background-color: black;
-    width: 5rem;
-    height: 5rem;
-    position: absolute;
-    left: 50%;
-    width: 20%;
-    z-index: 10;
+}
+
+.comment-mark {
+    padding: 0;
+    margin: 0;
+    pointer-events: none;
+    z-index: 99;
 }
 </style>

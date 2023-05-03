@@ -67,7 +67,7 @@ export default class SocketService {
             let data = msg.data.toString()
             // data.subString()
             console.log("websocket.js中接收到了信息：")
-            console.log(JSON.parse(data))
+            // console.log(JSON.parse(data))
             emitter.emit('sendWebSocketReceiveData', data)
         };
     }
