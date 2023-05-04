@@ -67,8 +67,25 @@ function closeDocument(docUID) {
     })
 }
 
-//更新-这个走websocket
+//获取历史记录
+// rmg 200 String/HistoryList history
+function getHistory(docUID) {
+    return service({
+        url:"/document/history/" + docUID,
+        method:"get"
+    })
+}
 
+// 回退操作
+// 400/200
+function historyBack(userUID,historyUID) {
+    return service({
+        url:"/document/history/" + userUID + "/" + historyUID,
+        method:"post"
+    })
+}
+
+//更新-这个走websocket
 //测试
 function test(data){
     return service({
@@ -78,4 +95,4 @@ function test(data){
     })
 }
 
-export {newDocument,newContent,updateTitle,updateDescription,openDocument,saveDocument,closeDocument,test}
+export {newDocument,newContent,updateTitle,updateDescription,openDocument,saveDocument,closeDocument,getHistory,historyBack,test}

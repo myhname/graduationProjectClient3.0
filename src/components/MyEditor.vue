@@ -172,14 +172,14 @@ onMounted(() => {
         if (cm.somethingSelected()) {
             // 获取当前选择的文本区域
             let selections = cm.listSelections();
-            for(let i=0;i<selections.length;i++){
+            for (let i = 0; i < selections.length; i++) {
                 let selection = selections[i]
-                let from = {line:selection.head.line,ch:selection.head.ch}
-                let to = {line:selection.anchor.line,ch:selection.anchor.ch}
+                let from = { line: selection.head.line, ch: selection.head.ch }
+                let to = { line: selection.anchor.line, ch: selection.anchor.ch }
                 // 查找该区域内是否有标记
-                let marks = cm.findMarks(from,to)
+                let marks = cm.findMarks(from, to)
                 // 如果有，取消操作
-                if(marks.length > 0){
+                if (marks.length > 0) {
                     change.cancel()
                     break
                 }
@@ -212,6 +212,7 @@ onMounted(() => {
 
     // 接收锁
     emitter.on('sendBlovkMSGToEditor', (value) => {
+        getNoOnlyRead()
         if (value === "First") return
         for (let i = 0; i < value.length; i++) {
             blockMap.set(Number(value[i].split('=')[0]), Number(value[i].split('=')[1]))
@@ -322,6 +323,16 @@ onMounted(() => {
     })
 })
 
+// 文章只读
+const getOnlyRead = ()=>{
+    editor.setOption("readOnly", true);
+}
+
+// 文章可写
+const getNoOnlyRead = ()=>{
+    editor.setOption("readOnly", false);
+}
+
 // 加锁
 const getBlock = (line) => {
     let start = editor.posFromIndex(editor.indexFromPos({ line: line, ch: 0 }))
@@ -371,19 +382,23 @@ const deleteNullLine = (line) => {
 }
 
 //评论盒子，能加上但是不好用，没法点击
-const newCommentDiv = (line)=>{
+const newCommentDiv = (line) => {
     let newDiv = document.createElement('div')
     newDiv.classList.add('comment-mark')
     newDiv.innerHTML = "+"
-    let widget = editor.addWidget({line:line,ch:editor.getLine(line).length || 0},newDiv,{above:true})
-    newDiv.addEventListener('click', ()=>{
+    let widget = editor.addWidget({ line: line, ch: editor.getLine(line).length || 0 }, newDiv, { above: true })
+    newDiv.addEventListener('click', () => {
         console.log("展开评论")
     })
+}
+// 改变行号格式来提示评论，也不生效，最后再说
+const haveComment = (line) => {
+    editor.addLineClass(line, "gutter", "my-line-number")
 }
 
 // 测试用
 const testSetValue = (line, newList, removedNumbers) => {
-    
+
 }
 
 //工具方法
@@ -644,6 +659,9 @@ defineExpose({
     getBlock,
     getNoBlock,
     newCommentDiv,
+    getOnlyRead,
+    getNoOnlyRead,
+    haveComment,
     testSetValue,
 })
 
@@ -681,5 +699,9 @@ onBeforeUnmount(() => {
     margin: 0;
     pointer-events: none;
     z-index: 99;
+}
+
+.my-line-number .CodeMirror-linenumber {
+    color: red;
 }
 </style>

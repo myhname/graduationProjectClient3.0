@@ -6,18 +6,23 @@
         </div>
         <!-- 右半边渲染组件 -->
         <div class="right-preview" :class="{ present: isPresent }">
-            <MyPreview v-if="whichPreview" :md="markdown" ref="mdPreview"/>
-            <MyLatexPreview v-else :latex="markdown" ref="LaTexPreview"/>
+            <MyPreview v-if="whichPreview" :md="markdown" ref="mdPreview" />
+            <MyLatexPreview v-else :latex="markdown" ref="LaTexPreview" />
         </div>
 
         <!-- 弹窗显示 -->
         <div class="dialog-editor" :class="{ disNone: !isDialog }">
-            <div class="dialog-title"> {{dialogTitle}}</div>
+            <div class="dialog-title"> {{ dialogTitle }}</div>
             <div class="dailog-close" @click="closeDialog">
                 <MyIcons icon="close" Style="font-size:1.5rem"> </MyIcons>
             </div>
             <div class="dialog">
                 <NewFileDialog :show="show" @showChange="getShowChange" @newFileName="getNewFileName" />
+                <DocListDialog :docShow="docDiaShow" :contentList="contentList" @showChange="docShowChange"
+                    @getWhich="getWhich" />
+                <HistoryDialog :docShow="historyShow" :contentList="historyList" @showChange="historyShowChange"
+                    @getWhich="getWhichHistory" />
+                <PermissionTypeDialog :show="permissionShow" @showChange="permissionShowChange" @newPermission="getNewPermission"/>
             </div>
         </div>
     </div>
@@ -37,10 +42,14 @@ import MyIcons from '../components/MyIcons.vue';
 
 //弹窗
 import NewFileDialog from '../components/NewFileDialog.vue'
+import DocListDialog from '../components/DocListDialog.vue'
+import HistoryDialog from '../components/HistoryDialog.vue'
+import PermissionTypeDialog from '../components/PermissionTypeDialog.vue'
 
 import SocketService from '../untils/myWebsock'
 
-import {openDocument} from '../request/document'
+import { openDocument, saveDocument, newDocument, newContent, closeDocument, getHistory, historyBack } from '../request/document'
+import { getDocList, addPermission } from '../request/user'
 
 //显示控制（预览功能）
 const isPresent = ref(false)
@@ -82,6 +91,12 @@ const isDialog = ref(false)
 // 之后多了改用v-if或者其它方式进行选择
 const show = ref()
 const dialogTitle = ref()
+const docDiaShow = ref()
+const historyShow = ref()
+const permissionShow = ref()
+// 文章信息
+const contentList = ref()
+const historyList = ref()
 
 //控制渲染组件选择
 const whichPreview = ref(true)
@@ -95,6 +110,9 @@ let identity = {
     userUID: localStorage.getItem('userUID') || 0,
     docUID: localStorage.getItem('currDocUID') || 0
 }
+// 在线状态新建标识，保证执行顺序
+const isOnlineNew = ref(false)
+const isUpload = ref(false)
 
 //编辑器初始化
 //文件格式和语言类型同步
@@ -140,6 +158,12 @@ const getNewFile = () => {
     isDialog.value = true
     dialogTitle.value = "新建文件"
     show.value = false
+    // 如果是协作状态
+    if (isCooperation.value) {
+        isCooperation.value = false
+        websocketDisConnect()
+    }
+    if (localStorage.getItem('currDocUID')) localStorage.removeItem('currDocUID')
 }
 const getShowChange = (value) => {
     show.value = value
@@ -152,6 +176,9 @@ watch(newFile, () => {
     titleName.value = newFile.value
     fileFormat.value = titleName.value.split('.').pop()
     startText.value = ""
+    if (isOnlineNew.value) {
+        getNewFileOnline()
+    }
 })
 
 //打开本地文件
@@ -168,6 +195,12 @@ const openFile = async () => {
         startText.value = (await $data.getFileContext())
     } else {
         console.log("打开操作已取消")
+    }
+    // 打开新的本地文档，要断开协同编辑连接
+    if (localStorage.getItem('currDocUID')) localStorage.removeItem('currDocUID')
+    if (isCooperation.value) {
+        isCooperation.value = false
+        websocketDisConnect()
     }
 }
 //保存文件
@@ -201,11 +234,11 @@ const saveNewFile = async () => {
 }
 
 //格式控制
-watch(fileFormat,()=>{
-    if(fileFormat.value === 'tex'){
+watch(fileFormat, () => {
+    if (fileFormat.value === 'tex') {
         whichPreview.value = false
         editor.value.switchMode("LaTex")
-    }else{
+    } else {
         whichPreview.value = true
         editor.value.switchMode("markdown")
     }
@@ -217,44 +250,183 @@ const preview = () => {
 }
 
 //弹窗控制
-const closeDialog = ()=>{
+const closeDialog = () => {
     isDialog.value = false
+    show.value = true
+    docDiaShow.value = true
+    historyShow.value = true
+    permissionShow.value = true
 }
 
 //协同编辑部分，这个哪怕本地编辑也会触发，有点问题
 
 //建立websocket链接
 connect.value = SocketService.Instance
-const websocketConnect = ()=>{
-  SocketService.Instance.connect()
-  connect.value = SocketService.Instance
+const websocketConnect = () => {
+    SocketService.Instance.connect()
+    connect.value = SocketService.Instance
 }
 //断开链接，更换文章需要重新建立连接
-const websocketDisConnect = ()=>{
-  connect.value.close()
+const websocketDisConnect = () => {
+    if (localStorage.getItem('currDocUID')) {
+        closeOnlineDoc(localStorage.getItem('currDocUID'))
+        closeDocument(localStorage.getItem('currDocUID')).then(() => {
+            localStorage.removeItem('currDocUID')
+        })
+    }
+    connect.value.close()
+
 }
 //发送消息
-const sendData = (value)=>{
-  connect.value.send(value)
-  console.log("send this data")
+const sendData = (value) => {
+    connect.value.send(value)
+    console.log("send this data")
 }
 
-watch(isCooperation,()=>{
+watch(isCooperation, () => {
     emitter.emit('sendCooperatrionMSGToHeader', isCooperation.value)
 })
 
 // 打开文档
-const getOpenDoc = (docUID)=>{
-    openDocument(docUID).then((res)=>{
+const getOpenDoc = (docUID) => {
+    openDocument(docUID).then((res) => {
+        console.log(res)
         let curr = res.object
         // 去掉描述先
         curr.shift()
         startText.value = curr.join("\n")
-        localStorage.setItem('currDocUID',docUID)
+        localStorage.setItem('currDocUID', docUID)
         console.log("CurrDocUID是：" + localStorage.getItem('currDocUID'))
         identity.docUID = docUID
     })
+    if (!isCooperation.value) {
+        // 打开完应该自动进入协同编辑
+        websocketConnect()
+        // 得到锁之前禁止编辑
+        editor.value.getOnlyRead()
+    }
 }
+
+// 保存到数据库，需要打开协同编辑才行
+const saveCurrDocToSQL = (docUID) => {
+    saveDocument(docUID).then((res) => {
+        console.log(res)
+    })
+}
+
+//新建在线文档
+const getNewFileOnline = () => {
+    newDocument(localStorage.getItem('userUID'), {
+        docUID: null,
+        title: titleName.value.split('.')[0],
+        format: fileFormat.value,
+        authorUID: localStorage.getItem('userUID')
+    }).then((res) => {
+        console.log(res.object)
+        localStorage.setItem('currDocUID', res.object)
+        isOnlineNew.value = false
+        if (isUpload.value) {
+            uploadDocument()
+        }
+    })
+}
+
+// 上传 新文档or内容
+const uploadDocument = () => {
+    // 文档内容
+    if (localStorage.getItem('currDocUID')) {
+        newContent(localStorage.getItem('currDocUID'), { contentList: markdown.value.split('\n') }).then((res) => {
+            console.log(res)
+            isUpload.value = false
+        })
+    } else {
+        isUpload.value = true
+        getNewFileOnline()
+    }
+}
+
+//打开列表
+const openDocmentList = () => {
+
+    getDocList(localStorage.getItem('userUID')).then((res) => {
+        isDialog.value = true
+        dialogTitle.value = "文件列表"
+        docDiaShow.value = false
+        contentList.value = res.object
+    })
+}
+const getWhich = (value) => {
+    getOpenDoc(value)
+}
+const docShowChange = (value) => {
+    docDiaShow.value = value
+    closeDialog()
+}
+
+// 关闭文章
+const closeOnlineDoc = (docUID) => {
+    sendData(Object.assign(identity, {
+        changeType: "endEditor",
+        startLine: 0,
+        newContent: null,
+        removedNumbers: 0
+    }));
+}
+
+// 修改权限
+const permissionDialog = ()=>{
+    //实际上应该是打开到新的标签页不需要考虑上一份文件是否已经保存
+    isDialog.value = true
+    dialogTitle.value = "修改权限"
+    permissionShow.value = false
+}
+const permissionShowChange = (value)=>{
+    permissionShow.value = value
+    closeDialog()
+}
+const getNewPermission = (value)=>{
+    addPermission(localStorage.getItem('userUID'), {
+        docUID: Number(value.docUID),
+        userUID: Number(value.userUID),
+        permissionType: value.permissionType
+    }).then((res) => {
+        console.log(res)
+    })
+}
+
+// 恢复历史版本
+const getHistoryDialog = () => {
+    if (localStorage.getItem('currDocUID')) {
+        getHistory(localStorage.getItem('currDocUID')).then((res) => {
+            if (res.objectType === "String") {
+                promptingMsg.value = res.object
+            } else {
+                isDialog.value = true
+                dialogTitle.value = "历史版本"
+                historyShow.value = false
+                historyList.value = res.object
+            }
+        })
+    }
+}
+const getHistoryBack = (uid) => {
+    historyBack(localStorage.getItem('userUID'),uid).then((res)=>{
+        if(res.code === 400){
+            promptingMsg.value = res.object
+        }else{
+            promptingMsg.value = res.object
+        }
+    })
+}
+const getWhichHistory = (value) => {
+    getHistoryBack(value)
+}
+const historyShowChange = (value) => {
+    historyShow.value = value
+    closeDialog()
+}
+
+// 文档描述，重命名，评论
 
 onMounted(async () => {
     emitter.emit('leftToolsShow', true)
@@ -275,6 +447,10 @@ onMounted(async () => {
             case "newFile":
                 getNewFile()
                 break
+            case "newFileOnline":
+                isOnlineNew.value = true
+                getNewFile()
+                break
             case "openFile":
                 openFile()
                 break
@@ -285,11 +461,15 @@ onMounted(async () => {
                 saveNewFile()
                 break
             case "output":
-                if(whichPreview.value) mdPreview.value.exportPDF()
+                if (whichPreview.value) mdPreview.value.exportPDF()
                 else LaTexPreview.value.exportPDF()
                 break
             case "saveToSQL":
-                console.log("待后续完善")
+                if (!localStorage.getItem('currDocUID')) {
+                    promptingMsg.value = "当前未打开文章"
+                } else {
+                    saveCurrDocToSQL(identity.docUID || localStorage.getItem('currDocUID'))
+                }
                 break
             case "startConnect":
                 websocketConnect()
@@ -298,22 +478,22 @@ onMounted(async () => {
                 websocketDisConnect()
                 break
             case "upload":
-                console.log("待后续完善")
+                uploadDocument()
                 break
             case "getFlieList":
-                getOpenDoc(10000008)
+                openDocmentList()
                 break
             case "newComment":
                 console.log("待后续完善")
                 break
             case "newPermission":
-                console.log("待后续完善")
+                permissionDialog()
                 break
             case "historyBack":
-                console.log("待后续完善")
+                getHistoryDialog()
                 break
             case "addScreen":
-                editor.value.newCommentDiv(2)
+                editor.value.getOnlyRead()
                 console.log("待后续完善")
                 break
             case "preview":
@@ -368,32 +548,32 @@ onMounted(async () => {
         }
     })
 
-    emitter.on('updateMsgNeedSendToServer', (value)=>{
-        if(isCooperation.value && value.changeType != "undefined" && value.changeType != "donotmerge" && value.changeType != "undo"){
-            sendData(Object.assign(identity,value));
+    emitter.on('updateMsgNeedSendToServer', (value) => {
+        if (isCooperation.value && value.changeType != "undefined" && value.changeType != "donotmerge" && value.changeType != "undo") {
+            sendData(Object.assign(identity, value));
         }
         // console.log(value)
     })
 
     // 接收websocket连接信息
-    emitter.on('sendConnectionMSG', (value)=>{
+    emitter.on('sendConnectionMSG', (value) => {
         isCooperation.value = value
     })
 
     // 接收改变
-    emitter.on('sendWebSocketReceiveData', (value)=>{
-        if(value.substr(0,5) === "Error"){
+    emitter.on('sendWebSocketReceiveData', (value) => {
+        if (value.substr(0, 5) === "Error") {
             promptingMsg.value = value
-        }else if(value.substr(0,8) === "blockMSG"){
+        } else if (value.substr(0, 8) === "blockMSG") {
             let currBlock = value.slice(10)
-            if(currBlock === '}'){
+            if (currBlock === '}') {
                 emitter.emit('sendBlovkMSGToEditor', "First")
-            }else{
-                currBlock = currBlock.slice(0,-1)
+            } else {
+                currBlock = currBlock.slice(0, -1)
                 let blockList = currBlock.split(",")
                 emitter.emit('sendBlovkMSGToEditor', blockList)
             }
-        }else{
+        } else {
             emitter.emit('sendUpdateMSGToEditor', JSON.parse(value))
         }
     })
@@ -482,7 +662,7 @@ onUnmounted(() => {
     background-position: center top;
     background-repeat: no-repeat;
     background-size: cover;
-    background-image: url('../images/backgroundImg/3.jpg');
+    background-image: url('../images/backgroundImg/7.jpg');
     filter: opacity(0.9);
 }
 
@@ -495,7 +675,7 @@ onUnmounted(() => {
     color: black;
 }
 
-.dailog-close{
+.dailog-close {
     position: absolute;
     top: 0.2rem;
     right: 0.5rem;
@@ -503,7 +683,7 @@ onUnmounted(() => {
     height: 1.5rem;
 }
 
-.dailog-close:hover{
+.dailog-close:hover {
     cursor: pointer;
     background-color: red;
 }
@@ -515,5 +695,4 @@ onUnmounted(() => {
     width: 100%;
     height: 90%;
 }
-
 </style>

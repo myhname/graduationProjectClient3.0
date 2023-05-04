@@ -3,15 +3,19 @@
         <div class="content">
             <form>
                 <div>
-                    <label for="fileName">文件名称：</label>
-                    <input ref="fileName" type="text" name="fname" />
+                    <label for="document">文件：</label>
+                    <input ref="docUID" type="text" name="docuid" />
                 </div>
                 <div>
-                    <label for="flieFormat">文件格式：</label>
-                    <select ref="fileFormat">
-                        <option value="md">.md</option>
-                        <option value="tex">.tex</option>
-                        <option value="txt">.txt</option>
+                    <label for="user">用户：</label>
+                    <input ref="userUID" type="text" name="uuid" />
+                </div>
+                <div>
+                    <label for="permissionType">权限类型：</label>
+                    <select ref="permissionType">
+                        <option value="RO">只读</option>
+                        <option value="RW">读写</option>
+                        <option value="delete">撤销</option>
                     </select>
                 </div>
             </form>
@@ -22,7 +26,7 @@
         </div>
     </div>
 </template>
-  
+
 <script setup>
 import { ref, defineProps, computed, watch} from 'vue'
 
@@ -37,15 +41,20 @@ const isShow = computed(() => {
 })
 
 const dialogShow = ref(true)
-const fileName = ref()
-const fileFormat = ref()
-const file = ref()
+const docUID = ref()
+const userUID = ref()
+const permissionType = ref()
+let permission = {
+    docUID:null,
+    userUID:null,
+    permissionType:null
+}
 
 watch(isShow, () => {
     dialogShow.value = isShow.value
 })
 
-const emit = defineEmits(["showChange", "update:newFileName"])
+const emit = defineEmits(["showChange", "newPerssion"])
 
 const closeDialog = () => {
     dialogShow.value = true
@@ -53,14 +62,17 @@ const closeDialog = () => {
 }
 
 const newDialog = () => {
-    if (!fileName.value.value) {
+    if (!docUID.value.value || !userUID.value.value) {
         //弹窗
-        console.log("文件名不能为空")
+        console.log("值不能为空")
     } else {
-        file.value = fileName.value.value + "." + fileFormat.value.value
-        emit("newFileName", file.value)
-        fileName.value.value = ""
-        fileFormat.value.value = "md"
+        permission.docUID = docUID.value.value
+        permission.userUID = userUID.value.value
+        permission.permissionType = permissionType.value.value
+        emit("newPermission", permission)
+        docUID.value.value = null
+        userUID.value.value = null
+        permissionType.value.value = "RO"
         dialogShow.value = true
         emit("showChange", dialogShow.value)
     }

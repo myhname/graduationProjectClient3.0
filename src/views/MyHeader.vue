@@ -147,8 +147,15 @@ const openCooperationMenu = ()=>{
 
 // 文件操作， 新建本地文件
 const getNewFile = ()=>{
-    emitter.emit('fileControlMsgToEditor', "newFile")
-    promptingMsg.value = "新建临时文件"
+    // console.log("新建")
+    if(!isOnline.value){
+        emitter.emit('fileControlMsgToEditor', "newFile")
+        promptingMsg.value = "新建临时文件"
+    }else{
+        emitter.emit('fileControlMsgToEditor', "newFileOnline")
+        // console.log("555")
+        promptingMsg.value = "新建在线文档"
+    }
 }
 // 打开本地文件
 const getOpenFile = ()=>{
