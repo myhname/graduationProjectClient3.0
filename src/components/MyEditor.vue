@@ -235,6 +235,7 @@ onMounted(() => {
             }
             let endLine = value.startLine
             let addBlockFlag = true
+            let lineChange = 0
             switch (value.changeType) {
                 case '*compose':
                     replaceLine(value.startLine - 1, value.newContent[0])
@@ -248,6 +249,7 @@ onMounted(() => {
                         replaceLine(value.startLine, value.newContent[1] || "  ")
                         if (currCursor.line >= value.startLine) editor.setCursor({ line: currCursor.line + 1, ch: currCursor.ch })
                         endLine += 1
+                        lineChange = 1
                     } else replaceLine(value.startLine - 1, value.newContent[0])
                     break
                 case '+delete':
@@ -267,6 +269,7 @@ onMounted(() => {
                             currCursor.line = currCursor.line - value.removedNumbers + 1
                             editor.setCursor(currCursor)
                         }
+                        lineChange = 1-value.removedNumbers
                     }
                     break
                 case 'paste':
@@ -294,6 +297,7 @@ onMounted(() => {
                         currCursor.line = currCursor.line + value.newContent.length - 1
                         editor.setCursor(currCursor)
                     }
+                    lineChange = value.newContent.length - value.removedNumbers
                     break
                 case "undefined":
                     // 这个是防止识别被动改变
@@ -318,6 +322,7 @@ onMounted(() => {
                 blockMap.set(value.userUID, endLine)
                 addLineToBlockList(endLine)
             }
+            
         })
         editor.endOperation()
     })

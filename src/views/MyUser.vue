@@ -165,7 +165,7 @@ watch(promptingMsg, () => {
     background-position: center top;
     background-repeat: no-repeat;
     background-size: cover;
-    background-image: url("../images/backgroundImg/2.jpg");
+    background-image: url("../images/backgroundImg/7.jpg");
     opacity: .6;
 }
 

@@ -61,4 +61,20 @@ function addPermission(uid,data){
     })
 }
 
-export {login,register,deleteUser,changePassword,getDocList,addPermission}
+function addCommend(data){
+    return service({
+        url:"/user/addCommends",
+        method:"post",
+        data
+    })
+}
+
+function deleteCommend(userUID,docUID,data){
+    return service({
+        url:"/user/deleteCommends/" + userUID + "/" + docUID,
+        method:"post",
+        data
+    })
+}
+
+export {login,register,deleteUser,changePassword,getDocList,addPermission,addCommend,deleteCommend}

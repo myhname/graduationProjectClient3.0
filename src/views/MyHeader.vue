@@ -27,7 +27,8 @@
                         <li v-else @click="getCloseConnect">结束协作</li>
                         <li @click="getUpload">上传</li>
                         <li @click="getFileList">打开...</li>
-                        <li @click="getComment">评论</li>
+                        <li @click="getCommendList">获取评论</li>
+                        <li @click="getComment">增添评论</li>
                         <li @click="getPermission">修改权限</li>
                         <li @click="getHistory">恢复历史版本</li>
                         <li @click="getClientServer">服务器配置</li>
@@ -202,6 +203,11 @@ const getUpload = ()=>{
 const getFileList = ()=>{
     emitter.emit('fileControlMsgToEditor', "getFlieList")
     promptingMsg.value = "获取文章列表"
+}
+// 获取评论
+const getCommendList = ()=>{
+    emitter.emit('fileControlMsgToEditor', "getCommendList")
+    promptingMsg.value = "获取评论"
 }
 // 评论
 const getComment = ()=>{

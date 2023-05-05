@@ -95,4 +95,12 @@ function test(data){
     })
 }
 
-export {newDocument,newContent,updateTitle,updateDescription,openDocument,saveDocument,closeDocument,getHistory,historyBack,test}
+// 获取评论
+function getCommends(docUID){
+    return service({
+        url:"/document/getCommends/" + docUID,
+        method:"get"
+    })
+}
+
+export {newDocument,newContent,updateTitle,updateDescription,openDocument,saveDocument,closeDocument,getHistory,historyBack,getCommends,test}

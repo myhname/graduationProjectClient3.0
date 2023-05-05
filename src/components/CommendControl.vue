@@ -3,20 +3,12 @@
         <div class="content">
             <form>
                 <div>
-                    <label for="document">文件编号：</label>
-                    <input ref="docUID" type="text" name="docuid" />
+                    <label for="row">行：</label>
+                    <input ref="row" type="text" name="docuid" />
                 </div>
                 <div>
-                    <label for="user">用户ID：</label>
-                    <input ref="userUID" type="text" name="uuid" />
-                </div>
-                <div>
-                    <label for="permissionType">权限类型：</label>
-                    <select ref="permissionType">
-                        <option value="RO">只读</option>
-                        <option value="RW">读写</option>
-                        <option value="delete">撤销</option>
-                    </select>
+                    <label for="content">内容：</label>
+                    <input ref="content" type="text" name="uuid" />
                 </div>
             </form>
         </div>
@@ -41,20 +33,14 @@ const isShow = computed(() => {
 })
 
 const dialogShow = ref(true)
-const docUID = ref()
-const userUID = ref()
-const permissionType = ref()
-let permission = {
-    docUID:null,
-    userUID:null,
-    permissionType:null
-}
+const row = ref()
+const content = ref()
 
 watch(isShow, () => {
     dialogShow.value = isShow.value
 })
 
-const emit = defineEmits(["showChange", "newPerssion"])
+const emit = defineEmits(["showChange", "newCommend"])
 
 const closeDialog = () => {
     dialogShow.value = true
@@ -62,17 +48,16 @@ const closeDialog = () => {
 }
 
 const newDialog = () => {
-    if (!docUID.value.value || !userUID.value.value) {
+    if (!row.value.value || !content.value.value) {
         //弹窗
         console.log("值不能为空")
     } else {
-        permission.docUID = docUID.value.value
-        permission.userUID = userUID.value.value
-        permission.permissionType = permissionType.value.value
-        emit("newPermission", permission)
-        docUID.value.value = null
-        userUID.value.value = null
-        permissionType.value.value = "RO"
+        emit("newCommend", {
+            rowNumber:Number(row.value.value),
+            content:content.value.value
+        })
+        row.value.value = null
+        content.value.value = null
         dialogShow.value = true
         emit("showChange", dialogShow.value)
     }

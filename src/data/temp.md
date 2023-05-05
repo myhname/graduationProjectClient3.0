@@ -1,4 +1,3 @@
-<h1 align="center">Markdown Editor built on Vue</h1>
 
 ## Links
 

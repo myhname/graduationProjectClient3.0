@@ -22,7 +22,11 @@
                     @getWhich="getWhich" />
                 <HistoryDialog :docShow="historyShow" :contentList="historyList" @showChange="historyShowChange"
                     @getWhich="getWhichHistory" />
-                <PermissionTypeDialog :show="permissionShow" @showChange="permissionShowChange" @newPermission="getNewPermission"/>
+                <PermissionTypeDialog :show="permissionShow" @showChange="permissionShowChange"
+                    @newPermission="getNewPermission" />
+                <CommendControl :show="commendShow" @showChange="commendShowChange" @newCommend="getNewCommend" />
+                <CommendList :docShow="commendListShow" :contentList="commendList" @showChange="cLShowChange"
+                    @getWhich="deleteWhich" />
             </div>
         </div>
     </div>
@@ -45,11 +49,13 @@ import NewFileDialog from '../components/NewFileDialog.vue'
 import DocListDialog from '../components/DocListDialog.vue'
 import HistoryDialog from '../components/HistoryDialog.vue'
 import PermissionTypeDialog from '../components/PermissionTypeDialog.vue'
+import CommendControl from '../components/CommendControl.vue'
+import CommendList from '../components/CommendList.vue'
 
 import SocketService from '../untils/myWebsock'
 
-import { openDocument, saveDocument, newDocument, newContent, closeDocument, getHistory, historyBack } from '../request/document'
-import { getDocList, addPermission } from '../request/user'
+import { openDocument, saveDocument, newDocument, newContent, closeDocument, getHistory, historyBack, getCommends } from '../request/document'
+import { getDocList, addPermission, addCommend, deleteCommend } from '../request/user'
 
 //显示控制（预览功能）
 const isPresent = ref(false)
@@ -94,9 +100,12 @@ const dialogTitle = ref()
 const docDiaShow = ref()
 const historyShow = ref()
 const permissionShow = ref()
+const commendShow = ref()
+const commendListShow = ref()
 // 文章信息
 const contentList = ref()
 const historyList = ref()
+const commendList = ref()
 
 //控制渲染组件选择
 const whichPreview = ref(true)
@@ -256,6 +265,8 @@ const closeDialog = () => {
     docDiaShow.value = true
     historyShow.value = true
     permissionShow.value = true
+    commendShow.value = true
+    commendListShow.value = true
 }
 
 //协同编辑部分，这个哪怕本地编辑也会触发，有点问题
@@ -298,13 +309,14 @@ const getOpenDoc = (docUID) => {
         localStorage.setItem('currDocUID', docUID)
         console.log("CurrDocUID是：" + localStorage.getItem('currDocUID'))
         identity.docUID = docUID
+        if (!isCooperation.value) {
+            // 打开完应该自动进入协同编辑
+            websocketConnect()
+            // 得到锁之前禁止编辑
+            editor.value.getOnlyRead()
+        }
     })
-    if (!isCooperation.value) {
-        // 打开完应该自动进入协同编辑
-        websocketConnect()
-        // 得到锁之前禁止编辑
-        editor.value.getOnlyRead()
-    }
+
 }
 
 // 保存到数据库，需要打开协同编辑才行
@@ -374,17 +386,17 @@ const closeOnlineDoc = (docUID) => {
 }
 
 // 修改权限
-const permissionDialog = ()=>{
+const permissionDialog = () => {
     //实际上应该是打开到新的标签页不需要考虑上一份文件是否已经保存
     isDialog.value = true
     dialogTitle.value = "修改权限"
     permissionShow.value = false
 }
-const permissionShowChange = (value)=>{
+const permissionShowChange = (value) => {
     permissionShow.value = value
     closeDialog()
 }
-const getNewPermission = (value)=>{
+const getNewPermission = (value) => {
     addPermission(localStorage.getItem('userUID'), {
         docUID: Number(value.docUID),
         userUID: Number(value.userUID),
@@ -410,10 +422,10 @@ const getHistoryDialog = () => {
     }
 }
 const getHistoryBack = (uid) => {
-    historyBack(localStorage.getItem('userUID'),uid).then((res)=>{
-        if(res.code === 400){
+    historyBack(localStorage.getItem('userUID'), uid).then((res) => {
+        if (res.code === 400) {
             promptingMsg.value = res.object
-        }else{
+        } else {
             promptingMsg.value = res.object
         }
     })
@@ -426,7 +438,59 @@ const historyShowChange = (value) => {
     closeDialog()
 }
 
-// 文档描述，重命名，评论
+// 获取评论列表
+const getCommendList = () => {
+    if (!localStorage.getItem('currDocUID')) {
+        promptingMsg.value = "请先打开文章"
+    } else {
+        getCommends(localStorage.getItem('currDocUID')).then((res) => {
+            if (res.objectType === "String") {
+                promptingMsg.value = "暂无评论"
+            } else {
+                isDialog.value = true
+                dialogTitle.value = "评论列表"
+                commendListShow.value = false
+                commendList.value = res.object
+            }
+        })
+    }
+}
+const cLShowChange = (value) => {
+    commendShow.value = value
+    closeDialog()
+}
+const deleteWhich = (value) => {
+    deleteSelectedCommend(value)
+}
+
+// 删除评论
+const deleteSelectedCommend = (uid) => {
+    deleteCommend(localStorage.getItem('userUID'),localStorage.getItem('currDocUID'),{commendUID:uid}).then((res)=>{
+        promptingMsg.value = res.object
+    })
+}
+
+// 评论
+const NewCommend = () => {
+    isDialog.value = true
+    dialogTitle.value = "评论"
+    commendShow.value = false
+}
+const commendShowChange = (value) => {
+    commendShow.value = value
+    closeDialog()
+}
+const getNewCommend = (value) => {
+    addCommend(Object.assign({
+        uid: null,
+        docUID: localStorage.getItem('currDocUID') || 0,
+        authorUID: localStorage.getItem('userUID') || 0
+    }, value)).then((res) => {
+        console.log(res)
+    })
+}
+
+// 文档描述，重命名
 
 onMounted(async () => {
     emitter.emit('leftToolsShow', true)
@@ -483,8 +547,11 @@ onMounted(async () => {
             case "getFlieList":
                 openDocmentList()
                 break
+            case "getCommendList":
+                getCommendList()
+                break
             case "newComment":
-                console.log("待后续完善")
+                NewCommend()
                 break
             case "newPermission":
                 permissionDialog()
@@ -592,6 +659,7 @@ onBeforeUnmount(() => {
     emitter.off('updateMsgNeedSendToServer')
     emitter.off('sendConnectionMSG')
     emitter.off('sendWebSocketReceiveData')
+    localStorage.removeItem('currDocUID')
 })
 
 onUnmounted(() => {
